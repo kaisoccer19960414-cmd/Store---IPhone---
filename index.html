@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>最強の問題学習ツール</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="UnkoApp">
+    
+    <style>
+        /* 全体のデザイン調整（スマホで押しやすいサイズ感） */
+        body {
+            margin: 0;
+            padding: 15px;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            background-color: #f5f5f7;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            height: 92vh;
+        }
+        /* ステータス（問題 1 / 10 的なやつ） */
+        #status-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        /* 問題文エリア（SwingのJTextArea相当） */
+        #question-area {
+            flex: 1;
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 18px;
+            line-height: 1.5;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+        /* 解説エリア */
+        #kaisetsu-area {
+            background: #eef2f7;
+            border-left: 5px solid #007aff;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            min-height: 60px;
+        }
+        /* ボタン全体のコンテナ */
+        .btn-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        /* 各種ボタンの基本スタイル */
+        button {
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        /* 回答ボタン（〇✖） */
+        .ans-btn {
+            background-color: #007aff;
+            color: white;
+            font-size: 20px;
+        }
+        /* ナビゲーションボタン（戻る・次へ） */
+        .nav-btn {
+            background-color: #e5e5ea;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="status-label">問題 1 / 1</div>
+    
+    <div id="question-area">
+        ここに問題文が表示されます。サンプルの問題：JavaでGUI画面を作るための標準ライブラリはどれか？
+    </div>
+
+    <div id="kaisetsu-area">
+        回答するとここに解説が表示されます。
+    </div>
+
+    <div class="btn-panel">
+        <button class="ans-btn" onclick="answer('〇')">〇</button>
+        <button class="ans-btn" onclick="answer('✖')">✖</button>
+    </div>
+
+    <div class="btn-panel">
+        <button class="nav-btn">戻る</button>
+        <button class="nav-btn">次へ</button>
+    </div>
+
+    <script>
+        // ボタンを押したときの簡単な動き（テスト用）
+        function answer(choice) {
+            const kaisetsu = document.getElementById('kaisetsu-area');
+            if(choice === '〇') {
+                kaisetsu.innerHTML = "<strong>正解！</strong><br>解説：その通りです！";
+            } else {
+                kaisetsu.innerHTML = "<strong>不正解！</strong><br>解説：違います！";
+            }
+        }
+    </script>
+</body>
+</html>

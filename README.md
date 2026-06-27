@@ -1,5 +1,5 @@
 Versel(無料クラウド)活用した
-Progressive Web App練習(疑似iPhoneアプリ　※AppleStoreだと金銭面や厳しい審査が必要。)
+Progressive Web Appの練習(疑似iPhoneアプリ　※AppleStoreだと金銭面や厳しい審査が必要。)
 
 スマホや他のPCでも見られるのがええ。
 時代はクラウド。（っていうかメインPCをつけっぱにするのは不便すぎる）

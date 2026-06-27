@@ -1,116 +1,71 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>うんこぶりぶり</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="UnkoApp">
-    
+    <title>超簡易クラウド入出力テスト</title>
     <style>
-        /* 全体のデザイン調整（スマホで押しやすいサイズ感） */
         body {
-            margin: 0;
-            padding: 15px;
-            font-family: "Helvetica Neue", Arial, sans-serif;
-            background-color: #f5f5f7;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            height: 92vh;
+            font-family: sans-serif;
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #f9f9f9;
         }
-        /* ステータス（問題 1 / 10 的なやつ） */
-        #status-label {
-            font-size: 14px;
-            color: #666;
-            margin-bottom: 5px;
-        }
-        /* 問題文エリア（SwingのJTextArea相当） */
-        #question-area {
-            flex: 1;
+        .section {
             background: white;
-            border-radius: 12px;
-            padding: 15px;
-            font-size: 18px;
-            line-height: 1.5;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            overflow-y: auto;
-            margin-bottom: 15px;
-        }
-        /* 解説エリア */
-        #kaisetsu-area {
-            background: #eef2f7;
-            border-left: 5px solid #007aff;
-            border-radius: 6px;
-            padding: 12px;
-            font-size: 16px;
-            margin-bottom: 15px;
-            min-height: 60px;
-        }
-        /* ボタン全体のコンテナ */
-        .btn-panel {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        /* 各種ボタンの基本スタイル */
-        button {
-            padding: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            border: none;
+            padding: 20px;
             border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 8px;
+            font-size: 16px;
+        }
+        button {
+            padding: 8px 15px;
+            font-size: 16px;
             cursor: pointer;
-            transition: background 0.2s;
         }
-        /* 回答ボタン（〇✖） */
-        .ans-btn {
-            background-color: #007aff;
-            color: white;
-            font-size: 20px;
-        }
-        /* ナビゲーションボタン（戻る・次へ） */
-        .nav-btn {
-            background-color: #e5e5ea;
-            color: #333;
+        #output-area {
+            min-height: 80px;
+            background: #eee;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
         }
     </style>
 </head>
 <body>
 
-    <div id="status-label">問題 1 / 1</div>
-    
-    <div id="question-area">
-        変更から更新までの練習中...
+    <h2>SonpoApp クラウド実験サイト</h2>
+
+    <div class="section">
+        <h3>1. クラウドDBへ保存</h3>
+        <input type="text" id="input-text" placeholder="ここに文字を入力">
+        <button onclick="saveToDB()">ボタン</button>
     </div>
 
-    <div id="kaisetsu-area">
-        回答するとここに解説が表示されます。
-    </div>
-
-    <div class="btn-panel">
-        <button class="ans-btn" onclick="answer('〇')">〇</button>
-        <button class="ans-btn" onclick="answer('✖')">✖</button>
-    </div>
-
-    <div class="btn-panel">
-        <button class="nav-btn">戻る</button>
-        <button class="nav-btn">次へ</button>
+    <div class="section">
+        <h3>2. DBからとり出す</h3>
+        <button onclick="readFromDB()">ボタン</button>
+        <div id="output-area">ここにDBから取得した文字が出力されます。</div>
     </div>
 
     <script>
-        // ボタンを押したときの簡単な動き（テスト用）
-        function answer(choice) {
-            const kaisetsu = document.getElementById('kaisetsu-area');
-            if(choice === '〇') {
-                kaisetsu.innerHTML = "<strong>正解！</strong><br>解説：その通りです！";
-            } else {
-                kaisetsu.innerHTML = "<strong>不正解！</strong><br>解説：違います！";
-            }
+        // 【あとでここにSupabaseと通信するJavaScriptの仕掛けを書きます】
+        function saveToDB() {
+            const text = document.getElementById('input-text').value;
+            alert('まだDBと繋がっていないので、手元でキープ：' + text);
+        }
+
+        function readFromDB() {
+            document.getElementById('output-area').innerText = 'まだDBと繋がっていないよ！';
         }
     </script>
+
 </body>
 </html>

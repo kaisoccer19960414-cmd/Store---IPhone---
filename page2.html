@@ -138,7 +138,10 @@
         // ページを開いたときの初期処理
         window.onload = function() {
             // 保存用と検索用のカレンダー両方に「今日の日付」を初期値としてセット
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date();
+            const jstOffset = 9 * 60 * 60 * 1000; // 日本時間の時差（9時間）
+            const jstDate = new Date(now.getTime() + jstOffset);
+            
             document.getElementById('lesson-date').value = today;
             document.getElementById('search-date').value = today;
             

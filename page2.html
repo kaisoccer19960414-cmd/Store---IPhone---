@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>授業で習ったもの一覧</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #f9f9f9;
+        }
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        textarea {
+            width: 95%;
+            height: 80px;
+            padding: 8px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        input[type="date"] {
+            padding: 6px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #0076ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        /* 日付別3列レイアウトのスタイル */
+        .columns-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .column {
+            flex: 1;
+            background: #f1f3f5;
+            padding: 15px;
+            border-radius: 6px;
+            min-height: 200px;
+        }
+        .column h4 {
+            margin-top: 0;
+            border-bottom: 2px solid #0076ff;
+            padding-bottom: 5px;
+            color: #333;
+        }
+        .column ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+        .column li {
+            margin-bottom: 8px;
+            font-size: 14px;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>SonpoApp 2ページ目</h2>
+
+    <div class="section">
+        <h3>1. クラウドDBへ保存</h3>
+        <div class="input-row">
+            <label for="lesson-date">授業日：</label>
+            <input type="date" id="lesson-date">
+        </div>
+        <textarea id="input-content" placeholder="授業で習ったものを入力してください"></textarea>
+        <div>
+            <button onclick="saveToDB()">保存する</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>2. 授業で習ったもの 日付別一覧</h3>
+        <button onclick="fetchLessonNotes()" style="background-color: #28a745;">データを読み込む</button>
+        
+        <div class="columns-container">
+            <div class="column">
+                <h4 id="date-col-1">6/29 (月)</h4>
+                <ul id="list-col-1"></ul>
+            </div>
+            <div class="column">
+                <h4 id="date-col-2">6/30 (火)</h4>
+                <ul id="list-col-2"></ul>
+            </div>
+            <div class="column">
+                <h4 id="date-col-3">6/31 (水)</h4>
+                <ul id="list-col-3"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 設定値（既存のものをそのまま使用）
+        const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
+
+        // ページを開いたときに、初期値として今日の日付を入力欄にセットする
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('lesson-date').value = today;
+            
+            // 手書き設計図の「R8（令和8年）」に合わせて日付ラベルを仮設定
+            document.getElementById('date-col-1').innerText = '2026-06-29 (月)';
+            document.getElementById('date-col-2').innerText = '2026-06-30 (火)';
+            document.getElementById('date-col-3').innerText = '2026-07-01 (水)'; // 6/31はないので7/1
+        }
+
+        // 新しいテーブル「lesson_notes」にデータを保存する関数
+        async function saveToDB() {
+            const dateValue = document.getElementById('lesson-date').value;
+            const contentValue = document.getElementById('input-content').value;
+
+            if (!contentValue) {
+                alert('内容を入力してください！');
+                return;
+            }
+
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify({
+                    lesson_date: dateValue, // 選択した日付
+                    content: contentValue   // 入力した内容
+                })
+            });
+
+            if (response.ok) {
+                alert('クラウドDBへ保存しました！');
+                document.getElementById('input-content').value = ''; // 入力欄を空にする
+                fetchLessonNotes(); // 自動で一覧を更新
+            } else {
+                alert('保存に失敗しました。Supabaseのテーブル名やカラム名を確認してください。');
+            }
+        }
+
+        // DBからデータを取得し、日付ごとに振り分ける関数
+        async function fetchLessonNotes() {
+            const list1 = document.getElementById('list-col-1');
+            const list2 = document.getElementById('list-col-2');
+            const list3 = document.getElementById('list-col-3');
+
+            // 一旦リストを空にする
+            list1.innerHTML = '';
+            list2.innerHTML = '';
+            list3.innerHTML = '';
+
+            // lesson_notesテーブルからデータを取得
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?order=id.asc`, {
+                method: 'GET',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+
+                data.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerText = item.content;
+
+                    // 日付（YYYY-MM-DD形式）に応じて、入れる列を自動判定
+                    if (item.lesson_date === '2026-06-29') {
+                        list1.appendChild(li);
+                    } else if (item.lesson_date === '2026-06-30') {
+                        list2.appendChild(li);
+                    } else if (item.lesson_date === '2026-07-01') {
+                        list3.appendChild(li);
+                    } else {
+                        // 対象外の日付の場合は、とりあえず3列目に入れておくなどの処理
+                        list3.appendChild(li);
+                    }
+                });
+            } else {
+                alert('データの取得に失敗しました。');
+            }
+        }
+    </script>
+</body>
+</html>

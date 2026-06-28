@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>授業で習ったもの一覧</title>
+    <title>授業で習ったもの一覧（カレンダー検索版）</title>
     <style>
         body {
             font-family: sans-serif;
             padding: 20px;
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
             background-color: #f9f9f9;
         }
@@ -33,8 +33,10 @@
             margin-bottom: 10px;
         }
         input[type="date"] {
-            padding: 6px;
+            padding: 8px;
             font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
         button {
             padding: 10px 20px;
@@ -48,52 +50,57 @@
         button:hover {
             background-color: #0056b3;
         }
-        /* 日付別3列レイアウトのスタイル */
-        .columns-container {
-            display: flex;
-            gap: 15px;
+        /* 1ページ目に戻るボタン */
+        .nav-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #e0e0e0;
+            color: #333;
+            text-decoration: none;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        /* 設計図通りの大きな結果表示画面 */
+        .big-screen {
+            background: #ffffff;
+            border: 2px solid #333;
+            border-radius: 6px;
+            min-height: 250px;
+            padding: 20px;
             margin-top: 15px;
         }
-        .column {
-            flex: 1;
-            background: #f1f3f5;
-            padding: 15px;
-            border-radius: 6px;
-            min-height: 200px;
-        }
-        .column h4 {
+        .big-screen h4 {
             margin-top: 0;
+            font-size: 18px;
             border-bottom: 2px solid #0076ff;
-            padding-bottom: 5px;
-            color: #333;
+            padding-bottom: 8px;
+            color: #222;
         }
-        .column ul {
+        .big-screen ul {
             padding-left: 20px;
             margin: 0;
         }
-        .column li {
-            margin-bottom: 8px;
-            font-size: 14px;
+        .big-screen li {
+            margin-bottom: 12px;
+            font-size: 16px;
+            line-height: 1.5;
             word-break: break-all;
+        }
+        .status-msg {
+            color: #666;
+            font-style: italic;
         }
     </style>
 </head>
 <body>
 
-    <h2>SonpoApp 2ページ目</h2>
+    <div style="text-align: left;">
+        <a href="index.html" class="nav-link">➔ クイズ（1ページ目）へ戻る</a>
+    </div>
 
-    <div style="text-align: left; margin-bottom: 15px;">
-    <a href="index.html" style="
-        display: inline-block;
-        padding: 8px 16px;
-        background-color: #e0e0e0;
-        color: #333;
-        text-decoration: none;
-        border-radius: 20px;
-        font-weight: bold;
-        font-size: 14px;
-    ">➔ クイズ（1ページ目）へ戻る</a>
-</div>
+    <h2>SonpoApp 2ページ目</h2>
 
     <div class="section">
         <h3>1. クラウドDBへ保存</h3>
@@ -109,41 +116,37 @@
 
     <div class="section">
         <h3>2. 授業で習ったもの 日付別一覧</h3>
-        <button onclick="fetchLessonNotes()" style="background-color: #28a745;">データを読み込む</button>
         
-        <div class="columns-container">
-            <div class="column">
-                <h4 id="date-col-1">6/29 (月)</h4>
-                <ul id="list-col-1"></ul>
-            </div>
-            <div class="column">
-                <h4 id="date-col-2">6/30 (火)</h4>
-                <ul id="list-col-2"></ul>
-            </div>
-            <div class="column">
-                <h4 id="date-col-3">6/31 (水)</h4>
-                <ul id="list-col-3"></ul>
-            </div>
+        <div class="input-row" style="background: #eef2f7; padding: 10px; border-radius: 6px;">
+            <label for="search-date" style="font-weight: bold;">表示する日付：</label>
+            <input type="date" id="search-date" onchange="fetchLessonNotesByDate()">
+        </div>
+        
+        <div class="big-screen">
+            <h4 id="display-date-title">日付を選択してください</h4>
+            <ul id="lesson-list">
+                <li class="status-msg">上のカレンダーから日付を選ぶと、ここにメモが表示されます。</li>
+            </ul>
         </div>
     </div>
 
     <script>
-        // 設定値（既存のものをそのまま使用）
+        // 設定値
         const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
 
-        // ページを開いたときに、初期値として今日の日付を入力欄にセットする
+        // ページを開いたときの初期処理
         window.onload = function() {
+            // 保存用と検索用のカレンダー両方に「今日の日付」を初期値としてセット
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('lesson-date').value = today;
+            document.getElementById('search-date').value = today;
             
-            // 手書き設計図の「R8（令和8年）」に合わせて日付ラベルを仮設定
-            document.getElementById('date-col-1').innerText = '2026-06-29 (月)';
-            document.getElementById('date-col-2').innerText = '2026-06-30 (火)';
-            document.getElementById('date-col-3').innerText = '2026-07-01 (水)'; // 6/31はないので7/1
+            // 最初から今日の日付のデータを読み込む
+            fetchLessonNotesByDate();
         }
 
-        // 新しいテーブル「lesson_notes」にデータを保存する関数
+        // データを保存する関数
         async function saveToDB() {
             const dateValue = document.getElementById('lesson-date').value;
             const contentValue = document.getElementById('input-content').value;
@@ -162,33 +165,38 @@
                     'Prefer': 'return=representation'
                 },
                 body: JSON.stringify({
-                    lesson_date: dateValue, // 選択した日付
-                    content: contentValue   // 入力した内容
+                    lesson_date: dateValue,
+                    content: contentValue
                 })
             });
 
             if (response.ok) {
                 alert('クラウドDBへ保存しました！');
-                document.getElementById('input-content').value = ''; // 入力欄を空にする
-                fetchLessonNotes(); // 自動で一覧を更新
+                document.getElementById('input-content').value = ''; // 入力欄をクリア
+                
+                // もし「保存した日付」と「今表示している日付」が同じなら、画面を自動更新
+                if (dateValue === document.getElementById('search-date').value) {
+                    fetchLessonNotesByDate();
+                }
             } else {
-                alert('保存に失敗しました。Supabaseのテーブル名やカラム名を確認してください。');
+                alert('保存に失敗しました。');
             }
         }
 
-        // DBからデータを取得し、日付ごとに振り分ける関数
-        async function fetchLessonNotes() {
-            const list1 = document.getElementById('list-col-1');
-            const list2 = document.getElementById('list-col-2');
-            const list3 = document.getElementById('list-col-3');
+        // 【今回の目玉】選ばれた日付のデータだけを狙い撃ちして取得する関数
+        async function fetchLessonNotesByDate() {
+            const searchDate = document.getElementById('search-date').value;
+            const title = document.getElementById('display-date-title');
+            const list = document.getElementById('lesson-list');
 
-            // 一旦リストを空にする
-            list1.innerHTML = '';
-            list2.innerHTML = '';
-            list3.innerHTML = '';
+            if (!searchDate) return;
 
-            // lesson_notesテーブルからデータを取得
-            const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?order=id.asc`, {
+            // 画面のタイトルを選択された日付に書き換える
+            title.innerText = `📅 ${searchDate} の授業メモ`;
+            list.innerHTML = '<li class="status-msg">読み込み中...</li>';
+
+            // SupabaseのAPIで「lesson_date が searchDate と一致するもの（eq.日付）」だけを条件指定して取得する
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.asc`, {
                 method: 'GET',
                 headers: {
                     'apikey': SUPABASE_KEY,
@@ -198,25 +206,20 @@
 
             if (response.ok) {
                 const data = await response.json();
+                list.innerHTML = ''; // クリア
 
-                data.forEach(item => {
-                    const li = document.createElement('li');
-                    li.innerText = item.content;
-
-                    // 日付（YYYY-MM-DD形式）に応じて、入れる列を自動判定
-                    if (item.lesson_date === '2026-06-29') {
-                        list1.appendChild(li);
-                    } else if (item.lesson_date === '2026-06-30') {
-                        list2.appendChild(li);
-                    } else if (item.lesson_date === '2026-07-01') {
-                        list3.appendChild(li);
-                    } else {
-                        // 対象外の日付の場合は、とりあえず3列目に入れておくなどの処理
-                        list3.appendChild(li);
-                    }
-                });
+                if (data.length > 0) {
+                    // データがあった分だけ、箇条書き（li）を作って大きな画面に追加
+                    data.forEach(item => {
+                        const li = document.createElement('li');
+                        li.innerText = item.content;
+                        list.appendChild(li);
+                    });
+                } else {
+                    list.innerHTML = '<li class="status-msg">※この日の入力データはまだありません。</li>';
+                }
             } else {
-                alert('データの取得に失敗しました。');
+                list.innerHTML = '<li class="status-msg" style="color:red;">データの取得に失敗しました。</li>';
             }
         }
     </script>

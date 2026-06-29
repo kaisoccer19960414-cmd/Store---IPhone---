@@ -1,0 +1,87 @@
+body {
+    font-family: sans-serif;
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: #f9f9f9;
+}
+.section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+textarea {
+    width: 95%;
+    height: 80px;
+    padding: 8px;
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+.input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+input[type="date"] {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: #0076ff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+}
+button:hover {
+    background-color: #0056b3;
+}
+/* 1ページ目に戻るボタン */
+.nav-link {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: #e0e0e0;
+    color: #333;
+    text-decoration: none;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+/* 設計図通りの大きな結果表示画面 */
+.big-screen {
+    background: #ffffff;
+    border: 2px solid #333;
+    border-radius: 6px;
+    min-height: 250px;
+    padding: 20px;
+    margin-top: 15px;
+}
+.big-screen h4 {
+    margin-top: 0;
+    font-size: 18px;
+    border-bottom: 2px solid #0076ff;
+    padding-bottom: 8px;
+    color: #222;
+}
+.big-screen ul {
+    padding-left: 20px;
+    margin: 0;
+}
+.big-screen li {
+    margin-bottom: 12px;
+    font-size: 16px;
+    line-height: 1.5;
+    word-break: break-all;
+}
+.status-msg {
+    color: #666;
+    font-style: italic;
+}

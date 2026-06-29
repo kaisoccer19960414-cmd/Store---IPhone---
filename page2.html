@@ -222,6 +222,32 @@
                     data.forEach(item => {
                         const li = document.createElement('li');
                         li.innerText = item.content;
+                        //-----------------------------------------6/29
+                        // スマホの誤操作防止のため、少しスタイルを調整（長押しできることをなんとなく伝える）
+                        li.style.cursor = 'pointer';
+                        li.style.userSelect = 'none'; // 長押し時に文字選択の青いインジケータが出にくくする
+
+                        // 長押し判定用の変数
+                        let pressTimer;
+
+                        // --- スマホ用（タッチ）イベント ---
+                        li.addEventListener('touchstart', (e) => {
+                            pressTimer = setTimeout(() => {
+                                handleLongPress(item.id, item.content);
+                            }, 800); // 0.8秒長押しで発動
+                        });
+                        li.addEventListener('touchend', () => clearTimeout(pressTimer));
+                        li.addEventListener('touchmove', () => clearTimeout(pressTimer)); // スクロール時はキャンセル
+
+                        // --- PC用（マウス）イベント ---
+                        li.addEventListener('mousedown', (e) => {
+                            pressTimer = setTimeout(() => {
+                                handleLongPress(item.id, item.content);
+                            }, 800);
+                        });
+                        li.addEventListener('mouseup', () => clearTimeout(pressTimer));
+                        li.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+                         //--------------------------------6/29
                         list.appendChild(li);
                     });
                 } else {
@@ -231,6 +257,40 @@
                 list.innerHTML = '<li class="status-msg" style="color:red;">データの取得に失敗しました。</li>';
             }
         }
+        //----------------------------------6/29
+        // 長押しされたときの処理
+        function handleLongPress(id, content) {
+            // 表示をスッキリさせるため、長いテキストは省略
+            const shortContent = content.length > 20 ? content.substring(0, 20) + '...' : content;
+            
+            // 確認のポップアップを表示
+            const confirmDelete = confirm(`❌ 以下の項目を削除しますか？\n\n「${shortContent}」`);
+            
+            if (confirmDelete) {
+                deleteNote(id);
+            }
+        }
+
+        // SupabaseのDBからデータを削除する関数
+        async function deleteNote(id) {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Prefer': 'return=representation'
+                }
+            });
+
+            if (response.ok) {
+                alert('削除しました！');
+                // 画面を再読み込みして最新の状態にする
+                fetchLessonNotesByDate();
+            } else {
+                alert('削除に失敗しました。');
+            }
+        }
+
     </script>
 </body>
 </html>

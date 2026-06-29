@@ -4,22 +4,18 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 // ページを開いたときの初期処理
 window.onload = function() {
-    // 保存用と検索用のカレンダー両方に「今日の日付」を初期値としてセット
     const today = new Date();
     const jstOffset = 9 * 60 * 60 * 1000; // 日本時間の時差（9時間）
     const jstDate = new Date(today.getTime() + jstOffset);
     
-    // カレンダーに入力できる「YYYY-MM-DD」の形に変換
     const yyyy = jstDate.getUTCFullYear();
-    const mm = String(jstDate.getUTCMonth() + 1).padStart(2, '0'); // 月は0から始まるので+1
+    const mm = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
     const dd = String(jstDate.getUTCDate()).padStart(2, '0');
     const formattedDate = `${yyyy}-${mm}-${dd}`;
     
-    // 文字列になった日付をセット
     document.getElementById('lesson-date').value = formattedDate;
     document.getElementById('search-date').value = formattedDate;
     
-    // 最初から今日の日付のデータを読み込む
     fetchLessonNotesByDate();
 }
 
@@ -40,14 +36,17 @@ async function saveToDB() {
             'Authorization': `Bearer ${SUPABASE_KEY}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
-        }
+        },
+        body: JSON.stringify({
+            lesson_date: dateValue,
+            content: contentValue
+        })
     });
 
     if (response.ok) {
         alert('クラウドDBへ保存しました！');
         document.getElementById('input-content').value = ''; // 入力欄をクリア
         
-        // もし「保存した日付」と「今表示している日付」が同じなら、画面を自動更新
         if (dateValue === document.getElementById('search-date').value) {
             fetchLessonNotesByDate();
         }
@@ -64,11 +63,9 @@ async function fetchLessonNotesByDate() {
 
     if (!searchDate) return;
 
-    // 画面のタイトルを選択された日付に書き換える
     title.innerText = `📅 ${searchDate} の授業メモ`;
     list.innerHTML = '<li class="status-msg">読み込み中...</li>';
 
-    // SupabaseのAPIで条件指定して取得
     const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.asc`, {
         method: 'GET',
         headers: {
@@ -79,28 +76,26 @@ async function fetchLessonNotesByDate() {
 
     if (response.ok) {
         const data = await response.json();
-        list.innerHTML = ''; // クリア
+        list.innerHTML = '';
 
         if (data.length > 0) {
             data.forEach(item => {
                 const li = document.createElement('li');
                 li.innerText = item.content;
                 
-                // 長押しできることをなんとなく伝えるスタイル調整
                 li.style.cursor = 'pointer';
-                li.style.userSelect = 'none'; // 長押し時に青い選択線を防ぐ
+                li.style.userSelect = 'none';
 
-                // 長押し判定用の変数
                 let pressTimer;
 
                 // --- スマホ用（タッチ）イベント ---
                 li.addEventListener('touchstart', (e) => {
                     pressTimer = setTimeout(() => {
                         handleLongPress(item.id, item.content);
-                    }, 800); // 0.8秒長押しで発動
+                    }, 800);
                 });
                 li.addEventListener('touchend', () => clearTimeout(pressTimer));
-                li.addEventListener('touchmove', () => clearTimeout(pressTimer)); // スクロール時はキャンセル
+                li.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
                 // --- PC用（マウス）イベント ---
                 li.addEventListener('mousedown', (e) => {
@@ -144,7 +139,7 @@ async function deleteNote(id) {
 
     if (response.ok) {
         alert('削除しました！');
-        fetchLessonNotesByDate(); // 画面を自動更新
+        fetchLessonNotesByDate();
     } else {
         alert('削除に失敗しました。');
     }

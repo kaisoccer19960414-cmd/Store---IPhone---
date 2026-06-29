@@ -17,7 +17,12 @@ async function saveToDB() {
             'Authorization': `Bearer ${SUPABASE_KEY}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
-        }
+        },
+        body: JSON.stringify({
+            question: textValue,
+            answer: 'O',
+            explanation: 'テスト解説'
+        })
     });
 
     if (response.ok) {
@@ -64,7 +69,6 @@ async function fetchAllFromDB() {
     table.style.display = 'none';
     tbody.innerHTML = ''; // 古いデータをクリア
 
-    // IDの降順（新しい順）で最大20件取得
     const response = await fetch(`${SUPABASE_URL}/rest/v1/quiz_data?order=id.desc&limit=20`, {
         method: 'GET',
         headers: {

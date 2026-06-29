@@ -135,20 +135,26 @@
         const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
 
-        // ページを開いたときの初期処理
+       // ページを開いたときの初期処理
         window.onload = function() {
             // 保存用と検索用のカレンダー両方に「今日の日付」を初期値としてセット
             const today = new Date();
             const jstOffset = 9 * 60 * 60 * 1000; // 日本時間の時差（9時間）
-            const jstDate = new Date(now.getTime() + jstOffset);
+            const jstDate = new Date(today.getTime() + jstOffset); // now を today に修正
             
-            document.getElementById('lesson-date').value = today;
-            document.getElementById('search-date').value = today;
+            // カレンダーに入力できる「YYYY-MM-DD」の形に変換
+            const yyyy = jstDate.getUTCFullYear();
+            const mm = String(jstDate.getUTCMonth() + 1).padStart(2, '0'); // 月は0から始まるので+1
+            const dd = String(jstDate.getUTCDate()).padStart(2, '0');
+            const formattedDate = `${yyyy}-${mm}-${dd}`;
+            
+            // 文字列になった日付をセット
+            document.getElementById('lesson-date').value = formattedDate;
+            document.getElementById('search-date').value = formattedDate;
             
             // 最初から今日の日付のデータを読み込む
             fetchLessonNotesByDate();
         }
-
         // データを保存する関数
         async function saveToDB() {
             const dateValue = document.getElementById('lesson-date').value;

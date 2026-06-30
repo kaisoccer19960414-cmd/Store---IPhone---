@@ -85,3 +85,35 @@ button:hover {
     color: #666;
     font-style: italic;
 }
+
+/*-------------------6/30----------*/
+/* 左右を横並びにする親要素 */
+.flex-container {
+    display: flex;
+    gap: 20px; /* 左と右の間のスキマ */
+    align-items: flex-start;
+    margin-top: 15px;
+}
+
+/* 左側（授業メモ）と右側（要約）の幅を50%ずつに均等割り */
+.memo-left, .summary-right {
+    flex: 1;
+    min-width: 0; /* 文字溢れ防止 */
+}
+
+/* 右側の要約を表示する箱の見た目 */
+.summary-box {
+    background-color: #fafafa;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 15px;
+    min-height: 150px;
+    white-space: pre-wrap; /* 改行をそのまま表示する設定 */
+}
+
+/* スマホなど画面幅が狭い（768px以下）ときは自動で縦並びにする */
+@media (max-width: 768px) {
+    .flex-container {
+        flex-direction: column;
+    }
+}

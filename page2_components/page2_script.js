@@ -164,3 +164,10 @@ async function deleteNote(id) {
         alert('削除に失敗しました。');
     }
 }
+
+//-----------------6/30--------------
+// 「要約を生成する」ボタンが押された時の処理
+function generateSummaryNow() {
+    const searchDate = document.getElementById('search-date').value;
+    alert(`💡 無料枠節約モードがONです！\n\nPCのVS Codeで「generate_summary.py」を実行し、ターミナルに [ ${searchDate} ] と入力してください。\n生成完了後に画面を再読み込みすると要約が表示されます！`);
+}

@@ -1,9 +1,55 @@
-// 設定値
+// --- 設定値（変更なし） ---
 const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
 
+// 🔑 認証管理のためにSupabaseのリモコンを定義（追加）
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// 🎟️ 現在ログインしているユーザーの有効な「アクセストークン（チケット）」を取得する補助関数
+async function getValidToken() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    // ログインしていればユーザー固有のトークンを返し、していなければ従来のanonキーを予備として返す
+    return session ? session.access_token : SUPABASE_KEY;
+}
+
+// 🔒 ログイン状態をチェックする関数（追加）
+async function checkAuth() {
+    const { data: { session }, error } = await supabaseClient.auth.getSession();
+
+    if (error || !session) {
+        // ブラウザの引き出しにチケットがない場合だけ、パスワードを求める
+        const email = prompt("登録したメールアドレスを入力してください：");
+        const password = prompt("パスワードを入力してください：");
+
+        if (!email || !password) {
+            alert("ログインが必要やで！画面を再読み込みしてな。");
+            return false;
+        }
+
+        const { error: loginError } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (loginError) {
+            alert("ログインに失敗したわ： " + loginError.message);
+            window.location.reload();
+            return false;
+        } else {
+            alert("ログイン成功！半年間はこのまま使えるで！");
+            window.location.reload();
+            return false;
+        }
+    }
+    return true; // ログイン済みならスルー
+}
+
 // ページを開いたときの初期処理
-window.onload = function() {
+window.onload = async function() {
+    // 画面が開いた瞬間にまずログインチェック
+    const isLoggedIn = await checkAuth();
+    if (!isLoggedIn) return;
+
     const today = new Date();
     const jstOffset = 9 * 60 * 60 * 1000; // 日本時間の時差（9時間）
     const jstDate = new Date(today.getTime() + jstOffset);
@@ -29,11 +75,13 @@ async function saveToDB() {
         return;
     }
 
+    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
+
     const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes`, {
         method: 'POST',
         headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Authorization': `Bearer ${token}`, // 💡 トークンを適用
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
         },
@@ -60,26 +108,28 @@ async function fetchLessonNotesByDate() {
     const searchDate = document.getElementById('search-date').value;
     const title = document.getElementById('display-date-title');
     const list = document.getElementById('lesson-list');
-    const summaryBox = document.getElementById('summary-content'); // 💡 右側の要約エリアを取得
+    const summaryBox = document.getElementById('summary-content'); 
 
     if (!searchDate) return;
 
     title.innerText = `📅 ${searchDate} の授業メモ`;
     list.innerHTML = '<li class="status-msg">読み込み中...</li>';
-    summaryBox.innerHTML = '<p class="status-msg">読み込み中...</p>'; // 💡 要約側も読み込み中に
+    summaryBox.innerHTML = '<p class="status-msg">読み込み中...</p>'; 
+
+    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.asc`, {
         method: 'GET',
         headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`
+            'Authorization': `Bearer ${token}` // 💡 トークンを適用
         }
     });
 
     if (response.ok) {
         const data = await response.json();
         list.innerHTML = '';
-        summaryBox.innerHTML = ''; // 要約エリアをクリア
+        summaryBox.innerHTML = ''; 
 
         if (data.length > 0) {
             // --- 1. 左側：授業メモの表示処理 ---
@@ -113,11 +163,7 @@ async function fetchLessonNotesByDate() {
                 list.appendChild(li);
             });
 
-            // --- 2. 右側：Gemini 要約の表示処理 💡 ---
-            // その日のデータの「最後のレコード」に入っている要約、または最初に見つかった要約を代表して表示します
-            //---------------------------------------------
-            // --- 2. 右側：Gemini 要約の表示処理 💡 ---
-            // 配列を直接破壊（reverse）せずに、後ろからループして最初に要約が入っているレコードを探す
+            // --- 2. 右側：Gemini 要約の表示処理 ---
             let foundSummary = null;
             for (let i = data.length - 1; i >= 0; i--) {
                 if (data[i].summary && data[i].summary !== "REQUESTED") {
@@ -126,17 +172,23 @@ async function fetchLessonNotesByDate() {
                 }
             }
             
-            // 💡 もし文字が「REQUESTED」のままなら、まだPythonが処理中ということ
             const hasRequested = data.some(item => item.summary === "REQUESTED");
 
             if (foundSummary) {
-                summaryBox.innerText = foundSummary; // ✨ 生成された要約をガシャコン！
+                summaryBox.innerText = foundSummary; 
             } else if (hasRequested) {
                 summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">⏳ 現在、PCのPythonが要約を作成中（REQUESTED）です...終わったら画面をリロードしてください。</p>';
             } else {
                 summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">⚠️ 要約がありません。「要約を生成する」ボタンを押して、PCでスクリプトを実行してください。</p>';
             }
-    //--------------------------------------------
+        } else {
+            list.innerHTML = '<li class="status-msg">この日のメモはまだ登録されていません。</li>';
+            summaryBox.innerHTML = '<p class="status-msg">授業メモがないため、要約はありません。</p>';
+        }
+    } else {
+        list.innerHTML = '<li class="status-msg" style="color:red;">データの取得に失敗しました。</li>';
+        summaryBox.innerHTML = '<p class="status-msg" style="color:red;">要約の取得に失敗しました。</p>';
+    }
 }
 
 // 長押しされたときの処理
@@ -151,11 +203,13 @@ function handleLongPress(id, content) {
 
 // SupabaseのDBからデータを削除する関数
 async function deleteNote(id) {
+    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
+
     const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${id}`, {
         method: 'DELETE',
         headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Authorization': `Bearer ${token}`, // 💡 トークンを適用
             'Prefer': 'return=representation'
         }
     });
@@ -168,8 +222,7 @@ async function deleteNote(id) {
     }
 }
 
-//-----------------6/30--------------
-// 💡 安全なボタン式：Supabaseに要約リクエスト（注文）を出す
+// 安全なボタン式：Supabaseに要約リクエスト（注文）を出す
 async function generateSummaryNow() {
     const searchDate = document.getElementById('search-date').value;
     const summaryBox = document.getElementById('summary-content');
@@ -182,13 +235,14 @@ async function generateSummaryNow() {
 
     summaryBox.innerHTML = '<p class="status-msg" style="color: #0066cc;">⏳ 要約リクエストを送信中...</p>';
 
+    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
+
     try {
-        // その日の最新のレコードを1件特定する
         const getRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.desc&limit=1`, {
             method: 'GET',
             headers: {
                 'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`
+                'Authorization': `Bearer ${token}` // 💡 トークンを適用
             }
         });
 
@@ -198,12 +252,11 @@ async function generateSummaryNow() {
         if (data.length > 0) {
             const targetId = data[0].id;
             
-            // 💡 summary カラムに「REQUESTED」という注文票を書き込む
             const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${targetId}`, {
                 method: 'PATCH',
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Authorization': `Bearer ${token}`, // 💡 トークンを適用
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ summary: 'REQUESTED' })
@@ -222,15 +275,15 @@ async function generateSummaryNow() {
     }
 }
 
-//-------------------6/30-----------------
 // 補助関数: 生成した要約をSupabaseに格納する
 async function saveSummaryToSupabase(dateStr, summaryText) {
-    // まずその日のデータから最新のIDを1件特定するためにGET
+    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
+
     const getRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${dateStr}&order=id.desc&limit=1`, {
         method: 'GET',
         headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`
+            'Authorization': `Bearer ${token}` // 💡 トークンを適用
         }
     });
 
@@ -238,12 +291,11 @@ async function saveSummaryToSupabase(dateStr, summaryText) {
         const data = await getRes.json();
         if (data.length > 0) {
             const targetId = data[0].id;
-            // 特定したIDのレコードにUPDATEをかける
             await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${targetId}`, {
-                method: 'PATCH', // 部分更新
+                method: 'PATCH', 
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Authorization': `Bearer ${token}`, // 💡 トークンを適用
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ summary: summaryText })
@@ -252,4 +304,3 @@ async function saveSummaryToSupabase(dateStr, summaryText) {
         }
     }
 }
-}}

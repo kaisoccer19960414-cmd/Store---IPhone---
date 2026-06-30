@@ -60,11 +60,13 @@ async function fetchLessonNotesByDate() {
     const searchDate = document.getElementById('search-date').value;
     const title = document.getElementById('display-date-title');
     const list = document.getElementById('lesson-list');
+    const summaryBox = document.getElementById('summary-content'); // 💡 右側の要約エリアを取得
 
     if (!searchDate) return;
 
     title.innerText = `📅 ${searchDate} の授業メモ`;
     list.innerHTML = '<li class="status-msg">読み込み中...</li>';
+    summaryBox.innerHTML = '<p class="status-msg">読み込み中...</p>'; // 💡 要約側も読み込み中に
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.asc`, {
         method: 'GET',
@@ -77,8 +79,10 @@ async function fetchLessonNotesByDate() {
     if (response.ok) {
         const data = await response.json();
         list.innerHTML = '';
+        summaryBox.innerHTML = ''; // 要約エリアをクリア
 
         if (data.length > 0) {
+            // --- 1. 左側：授業メモの表示処理 ---
             data.forEach(item => {
                 const li = document.createElement('li');
                 li.innerText = item.content;
@@ -108,11 +112,27 @@ async function fetchLessonNotesByDate() {
                 
                 list.appendChild(li);
             });
+
+            // --- 2. 右側：Gemini 要約の表示処理 💡 ---
+            // その日のデータの「最後のレコード」に入っている要約、または最初に見つかった要約を代表して表示します
+            const latestSummaryItem = data.reverse().find(item => item.summary);
+            
+            if (latestSummaryItem && latestSummaryItem.summary) {
+                summaryBox.innerText = latestSummaryItem.summary; // 💡 要約テキストをガシャコン！
+            } else {
+                summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">⚠️ この日の授業メモに対する要約スクリプトがまだ実行されていないか、生成中のようです。</p>';
+            }
+            
+            // data.reverse() で配列が反転したのを元に戻しておく（念のため）
+            data.reverse();
+
         } else {
             list.innerHTML = '<li class="status-msg">※この日の入力データはまだありません。</li>';
+            summaryBox.innerHTML = '<p class="status-msg">授業メモが読み込まれると、ここに要約が表示されます。</p>';
         }
     } else {
         list.innerHTML = '<li class="status-msg" style="color:red;">データの取得に失敗しました。</li>';
+        summaryBox.innerHTML = '<p class="status-msg" style="color:red;">要約データの取得に失敗しました。</p>';
     }
 }
 

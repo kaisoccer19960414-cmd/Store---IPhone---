@@ -1,23 +1,22 @@
-// --- 設定値（変更なし） ---
+// --- 1. 設定値 ---
 const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
 
-// 🔑 認証管理のためにSupabaseのリモコンを定義（追加）
+// 🔑 Supabaseクライアントを初期化（ライブラリ本体の「supabase」を使用）
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// 🎟️ 現在ログインしているユーザーの有効な「アクセストークン（チケット）」を取得する補助関数
+// 🎟️ 有効なログインチケット（アクセストークン）を自動取得する関数
 async function getValidToken() {
     const { data: { session } } = await supabaseClient.auth.getSession();
-    // ログインしていればユーザー固有のトークンを返し、していなければ従来のanonキーを予備として返す
     return session ? session.access_token : SUPABASE_KEY;
 }
 
-// 🔒 ログイン状態をチェックする関数（追加）
+// 🔒 ログイン状態をチェックする関数（ポップアップ用）
 async function checkAuth() {
     const { data: { session }, error } = await supabaseClient.auth.getSession();
 
     if (error || !session) {
-        // ブラウザの引き出しにチケットがない場合だけ、パスワードを求める
+        // セッションがない場合のみ、プロンプトを表示
         const email = prompt("登録したメールアドレスを入力してください：");
         const password = prompt("パスワードを入力してください：");
 
@@ -36,7 +35,7 @@ async function checkAuth() {
             window.location.reload();
             return false;
         } else {
-            alert("ログイン成功！半年間はこのまま使えるで！");
+            alert("ログイン成功！");
             window.location.reload();
             return false;
         }
@@ -44,11 +43,11 @@ async function checkAuth() {
     return true; // ログイン済みならスルー
 }
 
-// ページを開いたときの初期処理
+// ページを開いたときの初期処理（★上書きされないよう、ファイル内で定義するのはこの1回だけにします）
 window.onload = async function() {
     // 画面が開いた瞬間にまずログインチェック
     const isLoggedIn = await checkAuth();
-    if (!isLoggedIn) return;
+    if (!isLoggedIn) return; // ログインしていなければここで処理を止める
 
     const today = new Date();
     const jstOffset = 9 * 60 * 60 * 1000; // 日本時間の時差（9時間）
@@ -75,13 +74,13 @@ async function saveToDB() {
         return;
     }
 
-    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
+    const token = await getValidToken();
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes`, {
         method: 'POST',
         headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`, // 💡 トークンを適用
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
         },
@@ -116,13 +115,13 @@ async function fetchLessonNotesByDate() {
     list.innerHTML = '<li class="status-msg">読み込み中...</li>';
     summaryBox.innerHTML = '<p class="status-msg">読み込み中...</p>'; 
 
-    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
+    const token = await getValidToken();
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.asc`, {
         method: 'GET',
         headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}` // 💡 トークンを適用
+            'Authorization': `Bearer ${token}`
         }
     });
 
@@ -203,13 +202,13 @@ function handleLongPress(id, content) {
 
 // SupabaseのDBからデータを削除する関数
 async function deleteNote(id) {
-    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
+    const token = await getValidToken();
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${id}`, {
         method: 'DELETE',
         headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`, // 💡 トークンを適用
+            'Authorization': `Bearer ${token}`,
             'Prefer': 'return=representation'
         }
     });
@@ -222,7 +221,7 @@ async function deleteNote(id) {
     }
 }
 
-// 安全なボタン式：Supabaseに要約リクエスト（注文）を出す
+// Supabaseに要約リクエスト（注文）を出す関数
 async function generateSummaryNow() {
     const searchDate = document.getElementById('search-date').value;
     const summaryBox = document.getElementById('summary-content');
@@ -235,14 +234,14 @@ async function generateSummaryNow() {
 
     summaryBox.innerHTML = '<p class="status-msg" style="color: #0066cc;">⏳ 要約リクエストを送信中...</p>';
 
-    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
+    const token = await getValidToken();
 
     try {
         const getRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.desc&limit=1`, {
             method: 'GET',
             headers: {
                 'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${token}` // 💡 トークンを適用
+                'Authorization': `Bearer ${token}`
             }
         });
 
@@ -256,7 +255,7 @@ async function generateSummaryNow() {
                 method: 'PATCH',
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${token}`, // 💡 トークンを適用
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ summary: 'REQUESTED' })
@@ -277,13 +276,13 @@ async function generateSummaryNow() {
 
 // 補助関数: 生成した要約をSupabaseに格納する
 async function saveSummaryToSupabase(dateStr, summaryText) {
-    const token = await getValidToken(); // 💡 ログインユーザーのチケットを取得
+    const token = await getValidToken();
 
     const getRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${dateStr}&order=id.desc&limit=1`, {
         method: 'GET',
         headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}` // 💡 トークンを適用
+            'Authorization': `Bearer ${token}`
         }
     });
 
@@ -295,7 +294,7 @@ async function saveSummaryToSupabase(dateStr, summaryText) {
                 method: 'PATCH', 
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${token}`, // 💡 トークンを適用
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ summary: summaryText })

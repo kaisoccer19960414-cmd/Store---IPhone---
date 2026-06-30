@@ -2,7 +2,7 @@
 const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
 
-// 🔑 Supabaseクライアントを初期化（ライブラリ本体の「supabase」を使用）
+// 🔑 Supabaseクライアントを初期化
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 🎟️ 有効なログインチケット（アクセストークン）を自動取得する関数
@@ -16,7 +16,6 @@ async function checkAuth() {
     const { data: { session }, error } = await supabaseClient.auth.getSession();
 
     if (error || !session) {
-        // セッションがない場合のみ、プロンプトを表示
         const email = prompt("登録したメールアドレスを入力してください：");
         const password = prompt("パスワードを入力してください：");
 
@@ -40,17 +39,16 @@ async function checkAuth() {
             return false;
         }
     }
-    return true; // ログイン済みならスルー
+    return true; 
 }
 
-// ページを開いたときの初期処理（★上書きされないよう、ファイル内で定義するのはこの1回だけにします）
+// ページを開いたときの初期処理
 window.onload = async function() {
-    // 画面が開いた瞬間にまずログインチェック
     const isLoggedIn = await checkAuth();
-    if (!isLoggedIn) return; // ログインしていなければここで処理を止める
+    if (!isLoggedIn) return; 
 
     const today = new Date();
-    const jstOffset = 9 * 60 * 60 * 1000; // 日本時間の時差（9時間）
+    const jstOffset = 9 * 60 * 60 * 1000; 
     const jstDate = new Date(today.getTime() + jstOffset);
     
     const yyyy = jstDate.getUTCFullYear();
@@ -92,7 +90,7 @@ async function saveToDB() {
 
     if (response.ok) {
         alert('クラウドDBへ保存しました！');
-        document.getElementById('input-content').value = ''; // 入力欄をクリア
+        document.getElementById('input-content').value = ''; 
         
         if (dateValue === document.getElementById('search-date').value) {
             fetchLessonNotesByDate();
@@ -102,7 +100,7 @@ async function saveToDB() {
     }
 }
 
-// 選ばれた日付のデータだけを狙い撃ちして取得する関数
+// 選ばれた日付のデータだけを取得する関数
 async function fetchLessonNotesByDate() {
     const searchDate = document.getElementById('search-date').value;
     const title = document.getElementById('display-date-title');
@@ -131,17 +129,14 @@ async function fetchLessonNotesByDate() {
         summaryBox.innerHTML = ''; 
 
         if (data.length > 0) {
-            // --- 1. 左側：授業メモの表示処理 ---
             data.forEach(item => {
                 const li = document.createElement('li');
                 li.innerText = item.content;
-                
                 li.style.cursor = 'pointer';
                 li.style.userSelect = 'none';
 
                 let pressTimer;
 
-                // --- スマホ用（タッチ）イベント ---
                 li.addEventListener('touchstart', (e) => {
                     pressTimer = setTimeout(() => {
                         handleLongPress(item.id, item.content);
@@ -150,7 +145,6 @@ async function fetchLessonNotesByDate() {
                 li.addEventListener('touchend', () => clearTimeout(pressTimer));
                 li.addEventListener('touchmove', () => clearTimeout(pressTimer));
 
-                // --- PC用（マウス）イベント ---
                 li.addEventListener('mousedown', (e) => {
                     pressTimer = setTimeout(() => {
                         handleLongPress(item.id, item.content);
@@ -162,7 +156,6 @@ async function fetchLessonNotesByDate() {
                 list.appendChild(li);
             });
 
-            // --- 2. 右側：Gemini 要約の表示処理 ---
             let foundSummary = null;
             for (let i = data.length - 1; i >= 0; i--) {
                 if (data[i].summary && data[i].summary !== "REQUESTED") {
@@ -221,7 +214,7 @@ async function deleteNote(id) {
     }
 }
 
-// Supabaseに要約リクエスト（注文）を出す関数
+// 要約リクエスト（注文）を出す関数
 async function generateSummaryNow() {
     const searchDate = document.getElementById('search-date').value;
     const summaryBox = document.getElementById('summary-content');
@@ -233,7 +226,6 @@ async function generateSummaryNow() {
     }
 
     summaryBox.innerHTML = '<p class="status-msg" style="color: #0066cc;">⏳ 要約リクエストを送信中...</p>';
-
     const token = await getValidToken();
 
     try {

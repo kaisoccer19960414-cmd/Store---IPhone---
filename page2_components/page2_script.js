@@ -166,8 +166,7 @@ async function deleteNote(id) {
 }
 
 //-----------------6/30--------------
-// 「要約を生成する」ボタンが押された時の処理
-// 💡 フロントエンドから直接Gemini APIを安全かつ単発で叩く関数
+// 💡 安全なボタン式：Supabaseに要約リクエスト（注文）を出す
 async function generateSummaryNow() {
     const searchDate = document.getElementById('search-date').value;
     const summaryBox = document.getElementById('summary-content');
@@ -178,56 +177,49 @@ async function generateSummaryNow() {
         return;
     }
 
-    // 1. 画面上の授業メモのテキストをすべて合体させる
-    let combinedNote = "";
-    listItems.forEach(li => {
-        combinedNote += li.innerText + "\n\n";
-    });
-
-    summaryBox.innerHTML = '<p class="status-msg" style="color: #0066cc;">🤖 ジェミタソがその場で要約を生成中...</p>';
-
-    // ⚠️ 注意: フロントエンドにキーを直接置くため、GitHubなどのパブリック公開時は注意してください
-    const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"; // 👈 ここにお持ちのGemini APIキーをセットしてください
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-    const prompt = `
-以下のIT授業のメモを論理的に整理し、復習しやすいように要約してください。
-重要なキーワードやコードの解説（Javaとの違いなどがあればそれも）を分かりやすく箇条書きでまとめてください。
-
-【授業メモ】
-${combinedNote}
-`;
+    summaryBox.innerHTML = '<p class="status-msg" style="color: #0066cc;">⏳ 要約リクエストを送信中...</p>';
 
     try {
-        // 2. ボタンを押したこの瞬間だけ、直接GeminiにFetchを飛ばす
-        const response = await fetch(url, {
-            method: 'POST',
+        // その日の最新のレコードを1件特定する
+        const getRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.desc&limit=1`, {
+            method: 'GET',
             headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
         });
 
-        if (!response.ok) throw new Error('Gemini APIとの通信に失敗しました。');
+        if (!getRes.ok) throw new Error('データの取得に失敗しました。');
+        const data = await getRes.json();
 
-        const result = await response.json();
-        const summaryText = result.candidates[0].content.parts[0].text;
+        if (data.length > 0) {
+            const targetId = data[0].id;
+            
+            // 💡 summary カラムに「REQUESTED」という注文票を書き込む
+            const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${targetId}`, {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ summary: 'REQUESTED' })
+            });
 
-        // 3. 画面のグレーの枠に即時反映！
-        summaryBox.innerText = summaryText;
+            if (!patchRes.ok) throw new Error('リクエストの送信に失敗しました。');
 
-        // 4. 次回以降も使い回せるよう、Supabaseのその日のデータに保存（UPDATE）をかける
-        // 本日の日付のメモのうち、1件（最新のID）を狙ってsummaryを上書きします
-        await saveSummaryToSupabase(searchDate, summaryText);
+            summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">🔔 要約を注文しました！<br>PC側で Python スクリプトを実行すると、ここに要約が届きます。</p>';
+        } else {
+            summaryBox.innerHTML = '<p class="status-msg">授業メモが見つかりません。</p>';
+        }
 
     } catch (error) {
         console.error(error);
-        summaryBox.innerHTML = `<p class="status-msg" style="color:red;">❌ エラーが発生しました: ${error.message}</p>`;
+        summaryBox.innerHTML = `<p class="status-msg" style="color:red;">❌ エラー: ${error.message}</p>`;
     }
 }
 
+//-------------------6/30-----------------
 // 補助関数: 生成した要約をSupabaseに格納する
 async function saveSummaryToSupabase(dateStr, summaryText) {
     // まずその日のデータから最新のIDを1件特定するためにGET

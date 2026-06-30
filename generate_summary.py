@@ -2,13 +2,16 @@ import os
 from supabase import create_client, Client
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
 
-# 接続設定
-SUPABASE_URL = "https://tekrwutayfleorpfbuhc.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80"
+load_dotenv()
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-client = genai.Client(api_key="YOUR_GEMINI_API_KEY") # ⚠️実際のキーを入れてね
+client = genai.Client(api_key=GEMINI_API_KEY) # 💡 安全に読み込まれます！
 
 def main():
     # 💡 ユーザーに入力させる（例: 2026-06-29）

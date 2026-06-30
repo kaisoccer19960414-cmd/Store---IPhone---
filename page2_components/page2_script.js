@@ -115,25 +115,28 @@ async function fetchLessonNotesByDate() {
 
             // --- 2. 右側：Gemini 要約の表示処理 💡 ---
             // その日のデータの「最後のレコード」に入っている要約、または最初に見つかった要約を代表して表示します
-            const latestSummaryItem = data.reverse().find(item => item.summary);
-            
-            if (latestSummaryItem && latestSummaryItem.summary) {
-                summaryBox.innerText = latestSummaryItem.summary; // 💡 要約テキストをガシャコン！
-            } else {
-                summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">⚠️ この日の授業メモに対する要約スクリプトがまだ実行されていないか、生成中のようです。</p>';
+            //---------------------------------------------
+            // --- 2. 右側：Gemini 要約の表示処理 💡 ---
+            // 配列を直接破壊（reverse）せずに、後ろからループして最初に要約が入っているレコードを探す
+            let foundSummary = null;
+            for (let i = data.length - 1; i >= 0; i--) {
+                if (data[i].summary && data[i].summary !== "REQUESTED") {
+                    foundSummary = data[i].summary;
+                    break;
+                }
             }
             
-            // data.reverse() で配列が反転したのを元に戻しておく（念のため）
-            data.reverse();
+            // 💡 もし文字が「REQUESTED」のままなら、まだPythonが処理中ということ
+            const hasRequested = data.some(item => item.summary === "REQUESTED");
 
-        } else {
-            list.innerHTML = '<li class="status-msg">※この日の入力データはまだありません。</li>';
-            summaryBox.innerHTML = '<p class="status-msg">授業メモが読み込まれると、ここに要約が表示されます。</p>';
-        }
-    } else {
-        list.innerHTML = '<li class="status-msg" style="color:red;">データの取得に失敗しました。</li>';
-        summaryBox.innerHTML = '<p class="status-msg" style="color:red;">要約データの取得に失敗しました。</p>';
-    }
+            if (foundSummary) {
+                summaryBox.innerText = foundSummary; // ✨ 生成された要約をガシャコン！
+            } else if (hasRequested) {
+                summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">⏳ 現在、PCのPythonが要約を作成中（REQUESTED）です...終わったら画面をリロードしてください。</p>';
+            } else {
+                summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">⚠️ 要約がありません。「要約を生成する」ボタンを押して、PCでスクリプトを実行してください。</p>';
+            }
+    //--------------------------------------------
 }
 
 // 長押しされたときの処理
@@ -249,3 +252,4 @@ async function saveSummaryToSupabase(dateStr, summaryText) {
         }
     }
 }
+}}

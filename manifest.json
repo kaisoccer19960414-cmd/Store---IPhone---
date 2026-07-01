@@ -1,6 +1,6 @@
 {
-  "name": "development API App",
-  "short_name": "Test App",
+  "name": "Unko Quiz App",
+  "short_name": "Unko Quiz",
   "start_url": "chat.html",
   "display": "standalone",
   "background_color": "#f0f0f0",

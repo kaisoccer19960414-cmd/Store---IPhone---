@@ -59,10 +59,20 @@
                 // ここにGET処理を書く
             }, []);
 
-            // ✉️ 2. 送信ボタンを押したときの処理（後で実装）
+           // ✉️ 2. 送信ボタンを押したときの処理
             const handleSend = () => {
                 if (!inputText.trim()) return;
-                alert(`送信しようとした文字: ${inputText}`);
+
+                // 新しいメッセージのデータ（オブジェクト）を作る
+                const newComment = {
+                    id: messages.length + 1, // 今の件数 + 1 を一時的なIDにする
+                    sender_name: "ワイ",
+                    message_text: inputText
+                };
+
+                // 🚀 Reactの魔法：今までのメッセージに新しいやつを合体させて配列を更新！
+                setMessages([...messages, newComment]);
+
                 setInputText(""); // 入力欄を空にする
             };
 

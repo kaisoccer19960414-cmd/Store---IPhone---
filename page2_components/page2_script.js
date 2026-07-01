@@ -214,55 +214,45 @@ async function deleteNote(id) {
     }
 }
 
-// 要約リクエスト（注文）を出す関数
+// 要約リクエストをVercelのPython APIに直接送信する関数
 async function generateSummaryNow() {
     const searchDate = document.getElementById('search-date').value;
     const summaryBox = document.getElementById('summary-content');
     const listItems = document.querySelectorAll('#lesson-list li');
 
+    // 要約するメモがあるかチェック
     if (!searchDate || listItems.length === 0 || listItems[0].classList.contains('status-msg')) {
         alert('要約する授業メモがありません！');
         return;
     }
 
-    summaryBox.innerHTML = '<p class="status-msg" style="color: #0066cc;">⏳ 要約リクエストを送信中...</p>';
-    const token = await getValidToken();
+    summaryBox.innerHTML = '<p class="status-msg" style="color: #0066cc;">⏳ Geminiが要約を生成中...</p>';
 
     try {
-        const getRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.desc&limit=1`, {
-            method: 'GET',
+        // 💡 Vercel上の自分自身のPython API（/api/summarize）を呼び出す
+        // 相対パスで指定することで、本番環境でもそのまま動きます
+        const response = await fetch('/api/summarize', {
+            method: 'POST',
             headers: {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${token}`
-            }
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ target_date: searchDate })
         });
 
-        if (!getRes.ok) throw new Error('データの取得に失敗しました。');
-        const data = await getRes.json();
+        const data = await response.json();
 
-        if (data.length > 0) {
-            const targetId = data[0].id;
-            
-            const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${targetId}`, {
-                method: 'PATCH',
-                headers: {
-                    'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ summary: 'REQUESTED' })
-            });
-
-            if (!patchRes.ok) throw new Error('リクエストの送信に失敗しました。');
-
-            summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">🔔 要約を注文しました！<br>PC側で Python スクリプトを実行すると、ここに要約が届きます。</p>';
-        } else {
-            summaryBox.innerHTML = '<p class="status-msg">授業メモが見つかりません。</p>';
+        if (!response.ok) {
+            throw new Error(data.detail || '要約の生成に失敗しました。');
         }
+
+        // 成功したら、画面の要約エリアを書き換える
+        summaryBox.innerText = data.summary;
+        alert('🎉 Geminiの要約が完了し、Supabaseへ保存されました！');
 
     } catch (error) {
         console.error(error);
         summaryBox.innerHTML = `<p class="status-msg" style="color:red;">❌ エラー: ${error.message}</p>`;
+        alert('エラーが発生しました：' + error.message);
     }
 }
 

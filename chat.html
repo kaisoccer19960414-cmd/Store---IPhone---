@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>親子チャット</title>
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* 🎨 シンプルなLINE風のチャットデザイン */
+        body { font-family: sans-serif; background-color: #7493c7; margin: 0; padding: 0; }
+        .chat-container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; height: 100vh; background-color: #7493c7; }
+        .header { background-color: #1e2a38; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; }
+        
+        /* メッセージ表示エリア */
+        .message-list { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .bubble-wrapper { display: flex; flex-direction: column; width: 100%; }
+        .bubble-wrapper.me { align-items: flex-end; }       /* ワイは右寄せ */
+        .bubble-wrapper.mom { align-items: flex-start; }   /* ママは左寄せ */
+        
+        .sender-name { font-size: 0.8rem; color: #e0e0e0; margin-bottom: 3px; padding: 0 5px; }
+        .bubble { max-width: 70%; padding: 10px 14px; border-radius: 15px; font-size: 0.95rem; word-break: break-all; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .bubble-wrapper.me .bubble { background-color: #85e249; color: #000; border-top-right-radius: 2px; }
+        .bubble-wrapper.mom .bubble { background-color: #ffffff; color: #000; border-top-left-radius: 2px; }
+
+        /* 入力エリア */
+        .input-area { display: flex; padding: 10px; background-color: #ffffff; gap: 10px; }
+        .input-box { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; font-size: 1rem; outline: none; }
+        .send-btn { background-color: #25d366; color: white; border: none; padding: 0 20px; border-radius: 20px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+        .send-btn:active { opacity: 0.8; }
+    </style>
+</head>
+<body>
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // 🔑 Supabaseの設定（2ページ目と同じ値）
+        const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function ChatApp() {
+            // 📦 ステート（状態）設計で決めた2つのデータ
+            const [messages, setMessages] = React.useState([
+                // テスト用のダミーデータ（最初はこれが出ます）
+                { id: 1, sender_name: "ワイ", message_text: "こんにちは。" },
+                { id: 2, sender_name: "ママ", message_text: "こんにちわ" },
+                { id: 3, sender_name: "ワイ", message_text: "元気か？" }
+            ]);
+            const [inputText, setInputText] = React.useState("");
+
+            // 🌟 1. ページが開かれたときにSupabaseからデータを持ってくる処理（後で実装）
+            React.useEffect(() => {
+                // ここにGET処理を書く
+            }, []);
+
+            // ✉️ 2. 送信ボタンを押したときの処理（後で実装）
+            const handleSend = () => {
+                if (!inputText.trim()) return;
+                alert(`送信しようとした文字: ${inputText}`);
+                setInputText(""); // 入力欄を空にする
+            };
+
+            return (
+                <div className="chat-container">
+                    <div className="header">オカンとのチャット（超簡易版）</div>
+                    
+                    {/* メッセージ履歴エリア */}
+                    <div className="message-list">
+                        {messages.map((msg) => {
+                            // "ワイ" なら右寄せ、それ以外（ママ）なら左寄せ
+                            const isMe = msg.sender_name === "ワイ";
+                            return (
+                                <div key={msg.id} className={`bubble-wrapper ${isMe ? 'me' : 'mom'}`}>
+                                    <div className="sender-name">{msg.sender_name}</div>
+                                    <div className="bubble">{msg.message_text}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* 入力エリア */}
+                    <div className="input-area">
+                        <input 
+                            type="text" 
+                            className="input-box" 
+                            placeholder="メッセージを入力"
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)} // 文字が入力されたらステートを更新
+                        />
+                        <button className="send-btn" onClick={handleSend}>送信</button>
+                    </div>
+                </div>
+            );
+        }
+
+        // 画面の #root に上の ChatApp をレンダリング（描画）する
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ChatApp />);
+    </script>
+</body>
+</html>

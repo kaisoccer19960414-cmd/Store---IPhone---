@@ -100,3 +100,31 @@ async function fetchAllFromDB() {
         status.innerText = 'データの取得に失敗しました。';
     }
 }
+
+// 📱 画面左端からの右スワイプで chat.html に遷移するロジック
+let touchStartX = 0;
+let touchStartY = 0;
+
+// 1. 指が触れた瞬間
+window.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+}, false);
+
+// 2. 指が離れた瞬間
+window.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    
+    const diffX = touchEndX - touchStartX; // 右への移動距離
+    const diffY = Math.abs(touchEndY - touchStartY); // 上下のズレ
+
+    // 💡 条件判定
+    // ・画面の左端（50px以内）からスワイプが始まっていること
+    // ・右に100px以上しっかり引っ張っていること
+    // ・上下のブレが50px以内であること（誤作動防止）
+    if (touchStartX < 50 && diffX > 100 && diffY < 50) {
+        // 条件をクリアしたら chat.html へワープ
+        window.location.href = './chat.html';
+    }
+}, false);

@@ -1,102 +1,150 @@
-<script type="text/babel">
-  // 🔑 Supabaseの設定
-  const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
-  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTg3OTk3MzMsImV4cCI6MjAzNDM3NTczM30.bM_j_H8v7i99SgO3_H9gO3_H9gO3_H9gO3_H9gO3_H9g'; // ※画像から見えているキーを使用
-  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>親子チャット</title>
+    
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
-  function ChatApp() {
-    // 📦 ステート（状態）管理
-    const [messages, setMessages] = React.useState([]); // 最初は空配列にしてDBから取得する
-    const [inputText, setInputText] = React.useState("");
+    <style>
+        /* 🎨 元のシンプルなLINE風チャットデザインを完全維持 */
+        body { font-family: sans-serif; background-color: #7493c7; margin: 0; padding: 0; }
+        .chat-container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; height: 100vh; background-color: #7493c7; }
+        .header { background-color: #1e2a38; color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.1rem; }
+        
+        /* メッセージ表示エリア */
+        .message-list { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .bubble-wrapper { display: flex; flex-direction: column; width: 100%; }
+        .bubble-wrapper.me { align-items: flex-end; }       /* ワイは右寄せ */
+        .bubble-wrapper.mom { align-items: flex-start; }   /* ママは左寄せ */
+        
+        .sender-name { font-size: 0.8rem; color: #e0e0e0; margin-bottom: 3px; padding: 0 5px; }
+        .bubble { max-width: 70%; padding: 10px 14px; border-radius: 15px; font-size: 0.95rem; word-break: break-all; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .bubble-wrapper.me .bubble { background-color: #85e249; color: #000; border-top-right-radius: 2px; }
+        .bubble-wrapper.mom .bubble { background-color: #ffffff; color: #000; border-top-left-radius: 2px; }
 
-    // 🌟 1. ページが開いた瞬間にSupabaseからデータを取ってくる処理（GET）
-    const fetchMessages = async () => {
-      const { data, error } = await supabaseClient
-        .from('messages')
-        .select('*')
-        .order('created_at', { ascending: true }); // 時系列順に並べる
+        /* 入力エリア */
+        .input-area { display: flex; padding: 10px; background-color: #ffffff; gap: 10px; }
+        .input-box { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; font-size: 1rem; outline: none; }
+        .send-btn { background-color: #25d366; color: white; border: none; padding: 0 20px; border-radius: 20px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+        .send-btn:active { opacity: 0.8; }
+    </style>
+</head>
+<body>
 
-      if (error) {
-        console.error('データ取得失敗:', error);
-      } else {
-        setMessages(data); // 画面のメッセージ一覧を更新
-      }
-    };
+    <div id="root"></div>
 
-    React.useEffect(() => {
-      fetchMessages(); // 初回読み込み
+    <script type="text/babel">
+        // 🔑 Supabaseの設定
+        const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      // ⚡️ 【超重要】オカンが送信した瞬間に画面をリアルタイム更新する魔法（リアルタイムリスナー）
-      const channel = supabaseClient
-        .channel('schema-db-changes')
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'messages' },
-          (payload) => {
-            // 新しいメッセージがDBに入ったら、手元のステートに合体させる
-            setMessages((prev) => [...prev, payload.new]);
-          }
-        )
-        .subscribe();
+        function ChatApp() {
+            // 最初は空配列にして、データベースから読み込む設計に変更
+            const [messages, setMessages] = React.useState([]);
+            const [inputText, setInputText] = React.useState("");
 
-      return () => {
-        supabaseClient.removeChannel(channel); // 画面を閉じたらリスナーを解除
-      };
-    }, []);
+            // 🌟 1. Supabaseからデータを引っ張ってくる処理（GET）
+            const fetchMessages = async () => {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('messages')
+                        .select('*')
+                        .order('created_at', { ascending: true }); // 時間が古い順（上から下へ流れる）
 
-    // ✉️ 2. 送信ボタンを押したときの処理（POST）
-    const handleSend = async () => {
-      if (!inputText.trim()) return; // 空文字なら無視
+                    if (error) {
+                        console.error("メッセージ取得エラー:", error);
+                    } else if (data) {
+                        setMessages(data);
+                    }
+                } catch (err) {
+                    console.error("通信エラー:", err);
+                }
+            };
 
-      // Supabaseの「messages」テーブルにデータを突っ込む！
-      const { error } = await supabaseClient
-        .from('messages')
-        .insert([
-          {
-            sender_name: 'ワイ',      // ※オカン側のスマホならここを「ママ」に変える
-            message_text: inputText
-          }
-        ]);
+            React.useEffect(() => {
+                fetchMessages(); // 画面が開いた瞬間に1回実行
 
-      if (error) {
-        alert('送信に失敗しました…');
-        console.error(error);
-      } else {
-        setInputText(""); // 送信が成功したら入力欄を空っぽにする
-      }
-    };
+                // ⚡️ オカン側が送信した時もリアルタイムに画面を更新する設定（Realtime機能）
+                const channel = supabaseClient
+                    .channel('realtime-messages')
+                    .on(
+                        'postgres_changes',
+                        { event: 'INSERT', schema: 'public', table: 'messages' },
+                        (payload) => {
+                            // 新しいメッセージがDBに入ったら、配列の後ろに合体
+                            setMessages((prev) => [...prev, payload.new]);
+                        }
+                    )
+                    .subscribe();
 
-    return (
-      <div className="chat-container">
-        {/* ヘッダー */}
-        <div className="chat-header">オカンとのチャット（リアルタイム版）</div>
+                return () => {
+                    supabaseClient.removeChannel(channel);
+                };
+            }, []);
 
-        {/* メッセージ表示エリア */}
-        <div className="message-area">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`message-row ${msg.sender_name === 'ワイ' ? 'right' : 'left'}`}>
-              <div className="user-name">{msg.sender_name}</div>
-              <div className="bubble">{msg.message_text}</div>
-            </div>
-          ))}
-        </div>
+            // ✉️ 2. 送信ボタンを押したときの処理（POST）
+            const handleSend = async () => {
+                if (!inputText.trim()) return;
 
-        {/* 入力フォームエリア */}
-        <div className="input-area">
-          <input 
-            type="text" 
-            className="input-box" 
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            placeholder="メッセージを入力"
-          />
-          <button className="send-btn" onClick={handleSend}>送信</button>
-        </div>
-      </div>
-    );
-  }
+                const textToSend = inputText;
+                setInputText(""); // 先に入力欄をクリアしてサクサク感を出す
 
-  // HTMLの <div id="root"></div> にReactをレンダリング
-  const root = ReactDOM.createRoot(document.getElementById('root'));
-  root.render(<ChatApp />);
-</script>
+                const { error } = await supabaseClient
+                    .from('messages')
+                    .insert([
+                        {
+                            sender_name: "ワイ", // 自分の名前。オカンのスマホならここを"ママ"にする
+                            message_text: textToSend
+                        }
+                    ]);
+
+                if (error) {
+                    alert("送信に失敗しました…");
+                    console.error("送信エラー:", error);
+                }
+            };
+
+            return (
+                <div className="chat-container">
+                    <div className="header">オカンとのチャット（リアルタイム版）</div>
+                    
+                    {/* メッセージ履歴エリア */}
+                    <div className="message-list">
+                        {messages.map((msg) => {
+                            // 送信者が "ワイ" なら右寄せ、それ以外なら左寄せ
+                            const isMe = msg.sender_name === "ワイ";
+                            return (
+                                <div key={msg.id} className={`bubble-wrapper ${isMe ? 'me' : 'mom'}`}>
+                                    <div className="sender-name">{msg.sender_name}</div>
+                                    <div className="bubble">{msg.message_text}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* 入力エリア */}
+                    <div className="input-area">
+                        <input 
+                            type="text" 
+                            className="input-box" 
+                            placeholder="メッセージを入力"
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                        />
+                        <button className="send-btn" onClick={handleSend}>送信</button>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ChatApp />);
+    </script>
+</body>
+</html>

@@ -28,7 +28,7 @@ async function saveToDB() {
     if (response.ok) {
         alert('クラウドDBへの保存に成功しました！');
         document.getElementById('input-text').value = '';
-        fetchAllFromDB(); // 保存したら一覧も自動更新
+        fetchAllFromDB(); 
     } else {
         alert('保存に失敗しました。');
     }
@@ -59,7 +59,7 @@ async function readFromDB() {
     }
 }
 
-// 3. DBのデータを全件（最大20件）取得してテーブル表示する関数
+// 3. DBのデータを全件取得してテーブル表示する関数
 async function fetchAllFromDB() {
     const table = document.getElementById('data-table');
     const tbody = document.getElementById('table-body');
@@ -67,7 +67,7 @@ async function fetchAllFromDB() {
     
     status.innerText = '読み込み中...';
     table.style.display = 'none';
-    tbody.innerHTML = ''; // 古いデータをクリア
+    tbody.innerHTML = ''; 
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/quiz_data?order=id.desc&limit=20`, {
         method: 'GET',
@@ -101,36 +101,27 @@ async function fetchAllFromDB() {
     }
 }
 
-// 📱 画面左端からの右スワイプで chat.html に遷移するロジック
-// スワイプ処理の関数内
-if (document.querySelector('#root').innerHTML === "") {
-    alert("読み込み中です。あと数秒待ってからスワイプしてください！");
-    return; // 処理を中断
-}
+// ページ読み込み完了後にスワイプ処理を登録
+document.addEventListener('DOMContentLoaded', () => {
+    let touchStartX = 0;
+    let touchStartY = 0;
 
-let touchStartX = 0;
-let touchStartY = 0;
+    window.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, false);
 
-// 1. 指が触れた瞬間
-window.addEventListener('touchstart', (e) => {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-}, false);
+    window.addEventListener('touchend', (e) => {
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+        
+        const diffX = touchEndX - touchStartX;
+        const diffY = Math.abs(touchEndY - touchStartY);
 
-// 2. 指が離れた瞬間
-window.addEventListener('touchend', (e) => {
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
-    
-    const diffX = touchEndX - touchStartX; // 右への移動距離
-    const diffY = Math.abs(touchEndY - touchStartY); // 上下のズレ
-
-    // 💡 条件判定
-    // ・画面の左端（50px以内）からスワイプが始まっていること
-    // ・右に100px以上しっかり引っ張っていること
-    // ・上下のブレが50px以内であること（誤作動防止）
-    if (touchStartX < 50 && diffX > 100 && diffY < 50) {
-        // 条件をクリアしたら chat.html へワープ
-        window.location.href = './chat.html';
-    }
-}, false);
+        // スワイプ判定
+        if (touchStartX < 50 && diffX > 100 && diffY < 50) {
+            // chat.htmlへ遷移
+            window.location.href = './chat.html';
+        }
+    }, false);
+});

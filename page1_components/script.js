@@ -4,47 +4,6 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 
 
 
-// 🔑 Supabaseクライアントを初期化
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// 🎟️ 有効なログインチケット（アクセストークン）を自動取得する関数
-async function getValidToken() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    return session ? session.access_token : SUPABASE_KEY;
-}
-
-// 🔒 ログイン状態をチェックする関数（ポップアップ用）
-async function checkAuth() {
-    const { data: { session }, error } = await supabaseClient.auth.getSession();
-
-    if (error || !session) {
-        const email = prompt("登録したメールアドレスを入力してください：");
-        const password = prompt("パスワードを入力してください：");
-
-        if (!email || !password) {
-            alert("ログインが必要やで！画面を再読み込みしてな。");
-            return false;
-        }
-
-        const { error: loginError } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-
-        if (loginError) {
-            alert("ログインに失敗したわ： " + loginError.message);
-            window.location.reload();
-            return false;
-        } else {
-            alert("ログイン成功！");
-            window.location.reload();
-            return false;
-        }
-    }
-    return true; 
-}
-
-
 
 
 

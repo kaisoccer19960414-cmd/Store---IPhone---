@@ -102,6 +102,12 @@ async function fetchAllFromDB() {
 }
 
 // 📱 画面左端からの右スワイプで chat.html に遷移するロジック
+// スワイプ処理の関数内
+if (document.querySelector('#root').innerHTML === "") {
+    alert("読み込み中です。あと数秒待ってからスワイプしてください！");
+    return; // 処理を中断
+}
+
 let touchStartX = 0;
 let touchStartY = 0;
 

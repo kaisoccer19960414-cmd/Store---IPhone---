@@ -39,6 +39,16 @@
     <div id="root"></div>
 
     <script type="text/babel">
+        
+        // React起動前は画面を真っ白にするか、読み込み中を表示する
+        document.body.style.visibility = 'hidden'; 
+
+        // Reactのrenderが終わった瞬間に画面を表示する
+      
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ChatApp />);
+        document.body.style.visibility = 'visible';
+
         // 🔑 Supabaseの設定
         const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';

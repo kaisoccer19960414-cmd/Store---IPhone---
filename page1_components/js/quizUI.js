@@ -8,29 +8,32 @@ export async function saveToDB() {
     return;
   }
 
-  const result = await createQuiz(textValue);
-  if (result) {
-    alert('クラウドDBへの保存に成功しました！');
-    input.value = '';
-    renderAllQuizzes();
-  } else {
-    alert('保存に失敗しました。');
+  const { data, error } = await createQuiz(textValue);
+
+  if (error) {
+    alert(`保存に失敗しました。\n理由: ${error}`);
+    return;
   }
+
+  alert('クラウドDBへの保存に成功しました！');
+  input.value = '';
+  renderAllQuizzes();
 }
+
 
 export async function readFromDB() {
   const outputArea = document.getElementById('output-area');
   outputArea.innerText = '通信中...';
 
-  const data = await fetchLatestQuiz();
-  if (data === null) {
-    outputArea.innerText = 'データの取得に失敗しました。';
-  } else if (data.length > 0) {
-    outputArea.innerText = data[0].question;
-  } else {
-    outputArea.innerText = 'まだデータが1件もありません。';
+  const { data, error } = await fetchLatestQuiz();
+
+  if (error) {
+    outputArea.innerText = `データの取得に失敗しました。(${error})`;
+    return;
   }
+  outputArea.innerText = data.length > 0 ? data[0].question : 'まだデータが1件もありません。';
 }
+
 
 export async function renderAllQuizzes() {
   const table = document.getElementById('data-table');
@@ -41,9 +44,10 @@ export async function renderAllQuizzes() {
   table.style.display = 'none';
   tbody.innerHTML = '';
 
-  const data = await fetchAllQuizzes();
-  if (data === null) {
-    status.innerText = 'データの取得に失敗しました。';
+  const { data, error } = await fetchAllQuizzes();
+
+  if (error) {
+    status.innerText = `データの取得に失敗しました。(${error})`;
     return;
   }
 

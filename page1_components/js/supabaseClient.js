@@ -11,12 +11,21 @@ export async function supabaseRequest(path, options = {}) {
         ...options.headers
       }
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return options.method === 'GET' || !options.method
+
+    if (!response.ok) {
+      // Supabase(PostgREST)が返す詳しいエラーJSONを読み取る
+      const errorBody = await response.json().catch(() => null);
+      const message = errorBody?.message || `HTTP ${response.status}`;
+      return { data: null, error: message };
+    }
+
+    const data = options.method === 'GET' || !options.method
       ? await response.json()
       : true;
+    return { data, error: null };
+
   } catch (err) {
     console.error('Supabase通信エラー:', err);
-    return null;
+    return { data: null, error: err.message };
   }
 }

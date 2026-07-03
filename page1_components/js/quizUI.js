@@ -70,6 +70,24 @@ async function handleDelete(id) {
 }
 
 
+export async function toggleQuizList() {
+  const table = document.getElementById('data-table');
+
+  // すでに表示されているか？（styleの現在値を見て判定）
+  const isVisible = table.style.display === 'table';
+
+  if (isVisible) {
+    // 表示中なら通信せずただ閉じる
+    table.style.display = 'none';
+    document.getElementById('list-status').innerText = '';
+    return;
+  }
+
+  // 非表示なら中身を取得して表示する
+  await renderAllQuizzes();
+}
+
+
 
 
 export async function renderAllQuizzes() {

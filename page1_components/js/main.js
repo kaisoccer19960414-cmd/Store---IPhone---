@@ -7,4 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('save-btn')?.addEventListener('click', saveToDB);
   document.getElementById('read-btn')?.addEventListener('click', readFromDB);
+document.getElementById('fetch-all-btn')?.addEventListener('click', toggleQuizList);
+
 });

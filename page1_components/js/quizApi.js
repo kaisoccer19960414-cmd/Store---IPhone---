@@ -1,10 +1,10 @@
 import { supabaseRequest } from './supabaseClient.js';
 
-export function createQuiz(question, answer = 'O', explanation = 'テスト解説') {
+export function createQuiz(question) {
   return supabaseRequest('quiz_data', {
     method: 'POST',
     headers: { 'Prefer': 'return=representation' },
-    body: JSON.stringify({ question, answer, explanation })
+    body: JSON.stringify({ question })
   });
 }
 

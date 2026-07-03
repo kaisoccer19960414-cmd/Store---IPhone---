@@ -17,7 +17,7 @@ export async function saveToDB() {
 
   alert('クラウドDBへの保存に成功しました！');
   input.value = '';
- //自動表示オフ renderAllQuizzes();
+  renderAllQuizzes();
 }
 
 
@@ -34,11 +34,10 @@ export async function readFromDB() {
   outputArea.innerText = data.length > 0 ? data[0].question : 'まだデータが1件もありません。';
 }
 
-// 編集ボタンが押された時の処理
+
 async function handleEdit(id, currentText) {
   const newText = prompt('新しい内容を入力してください', currentText);
  
-  // キャンセルされた場合、または空文字の場合は何もしない
   if (newText === null || newText.trim() === '') {
     return;
   }

@@ -1,4 +1,4 @@
-import { saveToDB, readFromDB, renderAllQuizzes } from './quizUI.js';
+import { saveToDB, readFromDB, renderAllQuizzes,toggleQuizList } from './quizUI.js';
 import { initSwipeNavigation } from './swipeNav.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -7,6 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('save-btn')?.addEventListener('click', saveToDB);
   document.getElementById('read-btn')?.addEventListener('click', readFromDB);
-document.getElementById('fetch-all-btn')?.addEventListener('click', toggleQuizList);
+   document.getElementById('fetch-all-btn')?.addEventListener('click', toggleQuizList);
 
 });

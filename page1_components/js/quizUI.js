@@ -17,7 +17,7 @@ export async function saveToDB() {
 
   alert('クラウドDBへの保存に成功しました！');
   input.value = '';
-  renderAllQuizzes();
+ //自動表示オフ renderAllQuizzes();
 }
 
 

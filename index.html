@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>超簡易クラウド入出力テスト（拡張版）</title>
@@ -18,31 +17,30 @@
     <div class="section">
         <h3>1. クラウドDBへ保存</h3>
         <input type="text" id="input-text" placeholder="ここに文字を入力">
-        <button onclick="saveToDB()">保存する</button>
+        <button id="save-btn">保存する</button>
     </div>
 
     <div class="section">
         <h3>2. DBから最新の1件をとり出す</h3>
-        <button onclick="readFromDB()">最新1件取得</button>
+        <button id="read-btn">最新1件取得</button>
         <div id="output-area">ここにDBから取得した文字が出力されます。</div>
     </div>
 
     <div class="section">
         <h3>3. DBの中身を一覧表示（最新20件）</h3>
-        <button onclick="fetchAllFromDB()">データを読み込む</button>
+        <button id="fetch-all-btn">データを読み込む</button>
         <table id="data-table" style="display: none;">
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>DBに入力されたテキスト (question)</th>
-                    
+                    <th>DBに入力されたテキスト</th>
                 </tr>
             </thead>
             <tbody id="table-body"></tbody>
         </table>
         <div id="list-status"></div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="page1_components/script.js"></script>
+
+    <script type="module" src="page1_components/js/main.js"></script>
 </body>
 </html>

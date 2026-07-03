@@ -92,9 +92,8 @@ export async function renderAllQuizzes() {
   status.innerText = data.length === 0
     ? 'データが空っぽです。'
     : `合計 ${data.length} 件のデータを表示しています。`;
-}
 
- data.forEach(item => {
+  data.forEach(item => {
     const row = document.createElement('tr');
  
     // ID列 + question列
@@ -122,5 +121,4 @@ export async function renderAllQuizzes() {
   });
  
   table.style.display = 'table';
-
- 
+}

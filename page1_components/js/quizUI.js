@@ -122,5 +122,5 @@ export async function renderAllQuizzes() {
   });
  
   table.style.display = 'table';
-}
+
  

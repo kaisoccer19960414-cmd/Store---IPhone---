@@ -19,3 +19,11 @@ export function fetchAllQuizzes(limit = 20) {
 export function deleteQuiz(id) {
   return supabaseRequest(`quiz_data?id=eq.${id}`, { method: 'DELETE' });
 }
+
+export function updateQuiz(id, question) {
+  return supabaseRequest(`quiz_data?id=eq.${id}`, {
+    method: 'PATCH',
+    headers: { 'Prefer': 'return=representation' },
+    body: JSON.stringify({ question })
+  });
+}

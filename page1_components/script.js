@@ -94,7 +94,7 @@ return;
 // innerHTML連結ではなくtextContentで安全にセット（XSS対策）
 data.forEach(item => {
 const row = document.createElement('tr');
-['id', 'question', 'answer', 'explanation'].forEach(key => {
+['id', 'question'].forEach(key => {
 const td = document.createElement('td');
 td.textContent = item[key] ?? (key === 'id' ? '-' : '');
 row.appendChild(td);

@@ -25,7 +25,7 @@ SUPABASE_HEADERS = {
 
 def check_passcode():
     """リクエストヘッダーのパスコードが正しいか確認する"""
-    given = request.headers.get('X-App-Passcode': '1111')
+    given = request.headers.get('X-App-Passcode')
     return given == APP_PASSCODE
 
 

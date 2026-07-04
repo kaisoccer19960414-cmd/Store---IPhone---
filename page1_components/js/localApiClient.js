@@ -7,6 +7,7 @@ export async function localApiRequest(path, options = {}) {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        'X-App-Passcode': '1111',
         ...options.headers
       }
     });

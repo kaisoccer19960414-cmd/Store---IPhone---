@@ -1,30 +1,27 @@
-import { supabaseRequest } from './localApiClient.js';     
- //from './supabaseClient.js';　←Supabase(クラウド版)
+import { localApiRequest } from './localApiClient.js';
 
 export function createQuiz(question) {
-  return supabaseRequest('quiz_data', {
+  return localApiRequest('quiz_data', {
     method: 'POST',
-    headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify({ question })
   });
 }
 
 export function fetchLatestQuiz() {
-  return supabaseRequest('quiz_data?order=id.desc&limit=1');
+  return localApiRequest('quiz_data?limit=1');
 }
 
 export function fetchAllQuizzes(limit = 20) {
-  return supabaseRequest(`quiz_data?order=id.desc&limit=${limit}`);
+  return localApiRequest(`quiz_data?limit=${limit}`);
 }
 
 export function deleteQuiz(id) {
-  return supabaseRequest(`quiz_data?id=eq.${id}`, { method: 'DELETE' });
+  return localApiRequest(`quiz_data/${id}`, { method: 'DELETE' });
 }
 
 export function updateQuiz(id, question) {
-  return supabaseRequest(`quiz_data?id=eq.${id}`, {
+  return localApiRequest(`quiz_data/${id}`, {
     method: 'PATCH',
-    headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify({ question })
   });
 }

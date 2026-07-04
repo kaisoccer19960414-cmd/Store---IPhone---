@@ -1,4 +1,5 @@
-import { supabaseRequest } from './supabaseClient.js';
+import { supabaseRequest } from './localApiClient.js';     
+ //from './supabaseClient.js';　←Supabase(クラウド版)
 
 export function createQuiz(question) {
   return supabaseRequest('quiz_data', {

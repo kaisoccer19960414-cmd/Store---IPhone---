@@ -1,7 +1,6 @@
-import { LOCAL_API_URL } from './Config.js';
+//ローカルサーバー(python)で試す版のJavascriptコード
+import { LOCAL_API_URL } from './config.js';
 
-// Flask版は認証(apikey)が無く、URLも /rest/v1/ のような接頭辞が無いので
-// supabaseClient.jsよりシンプルな形になる
 export async function localApiRequest(path, options = {}) {
   try {
     const response = await fetch(`${LOCAL_API_URL}/${path}`, {

@@ -69,6 +69,60 @@ def create_quiz():
     return jsonify({'id': new_id, 'question': question}), 201
 
 
+# ---------- 3. DELETE削除 ----------
+@app.route('/quiz_data/<int:quiz_id>', methods=['DELETE'])
+def delete_quiz(quiz_id):
+    conn = get_db_connection()
+ 
+    # 削除対象が存在するか先に確認
+    existing = conn.execute(
+        'SELECT id FROM quiz_data WHERE id = ?', (quiz_id,)
+    ).fetchone()
+ 
+    if existing is None:
+        conn.close()
+        return jsonify({'error': f'id {quiz_id} は存在しません'}), 404
+ 
+    conn.execute('DELETE FROM quiz_data WHERE id = ?', (quiz_id,))
+    conn.commit()
+    conn.close()
+ 
+    return jsonify({'deleted': quiz_id}), 200
+ 
+ 
+# ---------- 4. PATCH更新 ----------
+@app.route('/quiz_data/<int:quiz_id>', methods=['PATCH'])
+def update_quiz(quiz_id):
+    body = request.get_json(silent=True)
+ 
+    if not body or not body.get('question') or not body['question'].strip():
+        return jsonify({'error': 'question is required'}), 400
+ 
+    question = body['question'].strip()
+ 
+    conn = get_db_connection()
+ 
+    existing = conn.execute(
+        'SELECT id FROM quiz_data WHERE id = ?', (quiz_id,)
+    ).fetchone()
+ 
+    if existing is None:
+        conn.close()
+        return jsonify({'error': f'id {quiz_id} は存在しません'}), 404
+ 
+    conn.execute(
+        'UPDATE quiz_data SET question = ? WHERE id = ?',
+        (question, quiz_id)
+    )
+    conn.commit()
+    conn.close()
+ 
+    return jsonify({'id': quiz_id, 'question': question}), 200
+ 
+
+
+
+
 if __name__ == '__main__':
     init_db()
     app.run(debug=True, port=5000)

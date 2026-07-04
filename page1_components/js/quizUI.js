@@ -1,4 +1,4 @@
-import { createQuiz, fetchLatestQuiz, fetchAllQuizzes,deleteQuiz, updateQuiz } from '../../LocalHost_python/Quizapi.js'    
+import { createQuiz, fetchLatestQuiz, fetchAllQuizzes,deleteQuiz, updateQuiz } from './quizApi.js';   
 //from './quizApi.js'; ←supabase版のAPIを使う場合はこちらを使う 
 
 export async function saveToDB() {

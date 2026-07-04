@@ -1,5 +1,5 @@
 
-export const USE_LOCAL_API = true; // trueならFlask版、falseならSupabase版
+export const USE_LOCAL_API = false; // trueならFlask版、falseならSupabase版
 
 
 // Supabase(クラウド版)

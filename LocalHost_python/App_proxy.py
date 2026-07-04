@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
 import os
 import requests
+
+load_dotenv()
 
 app = Flask(__name__)
 app.json.ensure_ascii = False
@@ -9,9 +12,9 @@ CORS(app)
 
 # --- 環境変数から読み込む(コードに直接書かない!) ---
 # Renderにデプロイする時、これらは「環境変数」としてダッシュボードで設定する
-APP_PASSCODE = os.environ.get('APP_PASSCODE')          # 例: '1111'
-SUPABASE_URL = os.environ.get('SUPABASE_URL')          # 例: 'https://xxxx.supabase.co'
-SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')  # service_role key(絶対秘密)
+APP_PASSCODE = os.environ.get('APP_PASSCODE')          
+SUPABASE_URL = os.environ.get('SUPABASE_URL')          
+SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')  
 
 SUPABASE_HEADERS = {
     'apikey': SUPABASE_SERVICE_KEY,

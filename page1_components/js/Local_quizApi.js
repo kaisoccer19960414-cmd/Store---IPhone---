@@ -1,6 +1,9 @@
 /*Local版　あとで消すかも... {localApiRequest}になっている。
 使うときは、名前をquizApi.jsにする。
 
+quizApi.js          ← 今実際に「使われている」本番のファイル
+Local_quizApi.js     ← Flask版の中身を、コメントアウトして"待機"させてあるファイル
+
 
 
 import { localApiRequest } from './localApiClient.js';

@@ -1,5 +1,5 @@
 import { createQuiz, fetchLatestQuiz, fetchAllQuizzes,deleteQuiz, updateQuiz } from './quizApi.js';   
-//from './quizApi.js'; ←supabase版のAPIを使う場合はこちらを使う 
+
 
 export async function saveToDB() {
   const input = document.getElementById('input-text');

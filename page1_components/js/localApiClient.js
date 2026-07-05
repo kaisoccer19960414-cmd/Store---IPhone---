@@ -1,40 +1,52 @@
 import { LOCAL_API_URL } from './config.js';
 import { getToken, setToken } from './authClient.js';
-import { showAlert, showPrompt } from './modal.js';
+import { showAlert, showPrompt, showLoading, hideLoading } from './modal.js';
 
 async function loginWithPrompt() {
   const passcode = await showPrompt('管理者パスコードを入力してください', '', 'password');
   if (passcode === null) return null;
 
-  const res = await fetch(`${LOCAL_API_URL}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ passcode })
-  });
+  showLoading('ログイン中...');
+  try {
+    const res = await fetch(`${LOCAL_API_URL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode })
+    });
 
-  const body = await res.json().catch(() => null);
+    const body = await res.json().catch(() => null);
 
-  if (!res.ok) {
-    await showAlert(body?.error || 'ログインに失敗しました');
-    return null;
+    if (!res.ok) {
+      await showAlert(body?.error || 'ログインに失敗しました');
+      return null;
+    }
+
+    setToken(body.token);
+    return body.token;
+  } finally {
+    hideLoading();
   }
-
-  setToken(body.token);
-  return body.token;
 }
 
 export async function localApiRequest(path, options = {}) {
   try {
     let token = getToken();
 
-    let response = await fetch(`${LOCAL_API_URL}/${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        ...options.headers
-      }
-    });
+    showLoading('サーバーと通信中...\n(初回はRenderの起動に時間がかかることがあります)');
+
+    let response;
+    try {
+      response = await fetch(`${LOCAL_API_URL}/${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          ...options.headers
+        }
+      });
+    } finally {
+      hideLoading();
+    }
 
     if (response.status === 401) {
       const newToken = await loginWithPrompt();
@@ -42,14 +54,19 @@ export async function localApiRequest(path, options = {}) {
         return { data: null, error: 'ログインがキャンセルされました' };
       }
 
-      response = await fetch(`${LOCAL_API_URL}/${path}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${newToken}`,
-          ...options.headers
-        }
-      });
+      showLoading('サーバーと通信中...');
+      try {
+        response = await fetch(`${LOCAL_API_URL}/${path}`, {
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${newToken}`,
+            ...options.headers
+          }
+        });
+      } finally {
+        hideLoading();
+      }
     }
 
     if (!response.ok) {
@@ -62,6 +79,7 @@ export async function localApiRequest(path, options = {}) {
     return { data, error: null };
 
   } catch (err) {
+    hideLoading();
     console.error('ローカルAPI通信エラー:', err);
     return { data: null, error: err.message };
   }

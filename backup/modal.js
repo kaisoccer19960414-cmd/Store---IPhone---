@@ -65,24 +65,6 @@ function injectStylesOnce() {
       background: #8B4513;
       color: white;
     }
-    .app-modal-loading-box {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-    .app-spinner {
-      width: 32px;
-      height: 32px;
-      border: 4px solid #eee;
-      border-top-color: #8B4513;
-      border-radius: 50%;
-      margin-bottom: 12px;
-      animation: app-spin 0.8s linear infinite;
-    }
-    @keyframes app-spin {
-      to { transform: rotate(360deg); }
-    }
   `;
   document.head.appendChild(style);
 }
@@ -137,41 +119,7 @@ function createOverlay({ message, showInput = false, showCancel = true, inputTyp
   return { overlay, input, cancelBtn, okBtn };
 }
 
-// 通信中の表示(Renderのスリープ復帰待ちなど、時間がかかる処理向け)
-let loadingOverlay = null;
-
-export function showLoading(message = '通信中...') {
-  hideLoading(); // 念のため、表示済みのものがあれば消してから出す
-  injectStylesOnce();
-
-  const overlay = document.createElement('div');
-  overlay.className = 'app-modal-overlay';
-
-  const box = document.createElement('div');
-  box.className = 'app-modal-box app-modal-loading-box';
-
-  const spinner = document.createElement('div');
-  spinner.className = 'app-spinner';
-
-  const messageEl = document.createElement('p');
-  messageEl.className = 'app-modal-message';
-  messageEl.style.margin = '0';
-  messageEl.textContent = message;
-
-  box.appendChild(spinner);
-  box.appendChild(messageEl);
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-
-  loadingOverlay = overlay;
-}
-
-export function hideLoading() {
-  if (loadingOverlay) {
-    loadingOverlay.remove();
-    loadingOverlay = null;
-  }
-}
+// alertの代わり(通知のみ、ボタンはOKだけ)
 export function showAlert(message) {
   return new Promise((resolve) => {
     const { overlay, okBtn } = createOverlay({ message, showCancel: false });

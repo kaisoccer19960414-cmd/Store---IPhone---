@@ -1,10 +1,10 @@
 import { LOCAL_API_URL } from './config.js';
 import { getToken, setToken } from './authClient.js';
-import { showAlert, showPrompt } from './modal.js';
 
+// パスコードをその場で聞いて、ページ遷移せずにログインする(PWAのscopeを保つため)
 async function loginWithPrompt() {
-  const passcode = await showPrompt('管理者パスコードを入力してください', '', 'password');
-  if (passcode === null) return null;
+  const passcode = prompt('管理者パスコードを入力してください');
+  if (passcode === null) return null; // キャンセルされた
 
   const res = await fetch(`${LOCAL_API_URL}/login`, {
     method: 'POST',
@@ -15,7 +15,7 @@ async function loginWithPrompt() {
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
-    await showAlert(body?.error || 'ログインに失敗しました');
+    alert(body?.error || 'ログインに失敗しました');
     return null;
   }
 
@@ -36,6 +36,7 @@ export async function localApiRequest(path, options = {}) {
       }
     });
 
+    // 401(未ログイン)の場合、ページ遷移せずその場でログインしてから、同じリクエストをもう一度送る
     if (response.status === 401) {
       const newToken = await loginWithPrompt();
       if (!newToken) {

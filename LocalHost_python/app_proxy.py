@@ -97,25 +97,34 @@ def add_token_to_url(url, token):
 def login():
     next_url = request.values.get('next', '')
     client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    is_json_request = request.is_json  # fetch経由(PWA内で完結させたい場合)かどうか
 
     if request.method == 'POST':
         if is_locked_out(client_ip):
-            return render_template_string(
-                LOGIN_PAGE,
-                error='試行回数が多すぎます。5分ほど待ってから再度お試しください。',
-                next_url=next_url
-            ), 429
-        passcode = request.form.get('passcode') or ''
-        # secrets.compare_digest: 文字列比較にかかる時間を一定にし、タイミング攻撃を防ぐ
+            error_msg = '試行回数が多すぎます。5分ほど待ってから再度お試しください。'
+            if is_json_request:
+                return jsonify({'error': error_msg}), 429
+            return render_template_string(LOGIN_PAGE, error=error_msg, next_url=next_url), 429
+
+        if is_json_request:
+            passcode = (request.get_json(silent=True) or {}).get('passcode', '')
+        else:
+            passcode = request.form.get('passcode') or ''
+
         if APP_PASSCODE and secrets_module.compare_digest(passcode, APP_PASSCODE):
-            reset_attempts(client_ip)  # ログイン成功したので失敗カウントをリセット
+            reset_attempts(client_ip)
             token = serializer.dumps({'authenticated': True})
+
+            if is_json_request:
+                return jsonify({'token': token})  # ページ遷移せず、トークンだけ返す
 
             if is_safe_redirect(next_url):
                 return redirect(add_token_to_url(next_url, token))
             return jsonify({'token': token})
 
-        register_failed_attempt(client_ip)  # 失敗を記録
+        register_failed_attempt(client_ip)
+        if is_json_request:
+            return jsonify({'error': 'パスコードが違います'}), 401
         return render_template_string(LOGIN_PAGE, error='パスコードが違います', next_url=next_url)
 
     return render_template_string(LOGIN_PAGE, next_url=next_url)

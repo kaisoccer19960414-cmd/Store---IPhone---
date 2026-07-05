@@ -1,12 +1,33 @@
 import { LOCAL_API_URL } from './config.js';
-import { getToken, savePendingRequest } from './authClient.js';
+import { getToken, setToken } from './authClient.js';
 
-// successMessage: ログイン待ちで中断された場合に、戻ってきた後の自動再送信で使うメッセージ
-export async function localApiRequest(path, options = {}, successMessage = null) {
+// パスコードをその場で聞いて、ページ遷移せずにログインする(PWAのscopeを保つため)
+async function loginWithPrompt() {
+  const passcode = prompt('管理者パスコードを入力してください');
+  if (passcode === null) return null; // キャンセルされた
+
+  const res = await fetch(`${LOCAL_API_URL}/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ passcode })
+  });
+
+  const body = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    alert(body?.error || 'ログインに失敗しました');
+    return null;
+  }
+
+  setToken(body.token);
+  return body.token;
+}
+
+export async function localApiRequest(path, options = {}) {
   try {
-    const token = getToken();
+    let token = getToken();
 
-    const response = await fetch(`${LOCAL_API_URL}/${path}`, {
+    let response = await fetch(`${LOCAL_API_URL}/${path}`, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
@@ -15,15 +36,21 @@ export async function localApiRequest(path, options = {}, successMessage = null)
       }
     });
 
-    // ログインが必要なのにトークンが無い/無効な場合
+    // 401(未ログイン)の場合、ページ遷移せずその場でログインしてから、同じリクエストをもう一度送る
     if (response.status === 401) {
-      // 今送ろうとしていた内容を保存しておき、ログイン後に自動で再送信できるようにする
-      savePendingRequest(path, options, successMessage);
+      const newToken = await loginWithPrompt();
+      if (!newToken) {
+        return { data: null, error: 'ログインがキャンセルされました' };
+      }
 
-      const currentPageUrl = window.location.href;
-      const loginUrl = `${LOCAL_API_URL}/login?next=${encodeURIComponent(currentPageUrl)}`;
-      window.location.href = loginUrl;
-      return { data: null, error: 'ログインへ移動します' };
+      response = await fetch(`${LOCAL_API_URL}/${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${newToken}`,
+          ...options.headers
+        }
+      });
     }
 
     if (!response.ok) {

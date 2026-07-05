@@ -1,6 +1,7 @@
-from flask import Flask, request, jsonify, session, render_template_string, redirect
+from flask import Flask, request, jsonify, render_template_string, redirect
 from flask_cors import CORS
 from dotenv import load_dotenv
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from functools import wraps
 from urllib.parse import urlparse
 import os
@@ -11,18 +12,13 @@ load_dotenv()
 app = Flask(__name__)
 app.json.ensure_ascii = False
 
-# セッションを暗号署名するための秘密鍵(これも環境変数で管理する)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dev-only-fallback-key')
+SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'dev-only-fallback-key')
+serializer = URLSafeTimedSerializer(SECRET_KEY)
+TOKEN_MAX_AGE = 60 * 60 * 24 * 7  # トークンの有効期限: 7日間
 
-# クロスサイト(vercel.app → onrender.com)でもCookieを送れるようにする設定
-app.config.update(
-    SESSION_COOKIE_SAMESITE='None',  # 別ドメインからのリクエストでもCookieを許可
-    SESSION_COOKIE_SECURE=True,      # HTTPS通信でのみCookieを送る(本番では必須)
-)
-
-# フロントのVercelドメインを名指しで許可し、Cookie付きリクエストを許可する
+# Safari等のクロスサイトCookie制限を回避するため、Cookieには頼らずトークン方式にする
 FRONTEND_ORIGIN = os.environ.get('FRONTEND_ORIGIN', 'https://store-iphone-unko.vercel.app')
-CORS(app, supports_credentials=True, origins=[FRONTEND_ORIGIN])
+CORS(app, origins=[FRONTEND_ORIGIN])
 
 APP_PASSCODE = os.environ.get('APP_PASSCODE')
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
@@ -47,7 +43,6 @@ LOGIN_PAGE = """
     <button type="submit" style="margin-top: 10px; padding: 8px 20px;">ログイン</button>
   </form>
   {% if error %}<p style="color: red;">{{ error }}</p>{% endif %}
-  {% if success %}<p style="color: green;">ログインしました。このタブは閉じて、元のサイトに戻ってください。</p>{% endif %}
 </body>
 </html>
 """
@@ -62,36 +57,46 @@ def is_safe_redirect(url):
     return parsed.scheme == allowed.scheme and parsed.netloc == allowed.netloc
 
 
+def add_token_to_url(url, token):
+    """URLの末尾に ?token=... (または &token=...) を付け足す"""
+    separator = '&' if '?' in url else '?'
+    return f'{url}{separator}token={token}'
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # ?next=... で「ログイン後にどこへ戻るか」を受け取る
     next_url = request.values.get('next', '')
 
     if request.method == 'POST':
         passcode = request.form.get('passcode')
         if passcode == APP_PASSCODE:
-            session['authenticated'] = True
-            session.permanent = True
+            # パスコード確認後、署名付きの「合言葉」を1回だけ発行する
+            token = serializer.dumps({'authenticated': True})
 
             if is_safe_redirect(next_url):
-                return redirect(next_url)  # ← 元のページへ自動で戻す
-            return render_template_string(LOGIN_PAGE, success=True, next_url=next_url)
+                return redirect(add_token_to_url(next_url, token))
+            return jsonify({'token': token})  # next無しで直接開いた場合はそのまま表示
 
         return render_template_string(LOGIN_PAGE, error='パスコードが違います', next_url=next_url)
 
     return render_template_string(LOGIN_PAGE, next_url=next_url)
 
 
-@app.route('/logout', methods=['POST'])
-def logout():
-    session.pop('authenticated', None)
-    return jsonify({'logged_out': True})
+def verify_token(token):
+    try:
+        data = serializer.loads(token, max_age=TOKEN_MAX_AGE)
+        return data.get('authenticated') is True
+    except (BadSignature, SignatureExpired):
+        return False
 
 
 def require_login(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if not session.get('authenticated'):
+        auth_header = request.headers.get('Authorization', '')
+        token = auth_header.replace('Bearer ', '') if auth_header.startswith('Bearer ') else None
+
+        if not token or not verify_token(token):
             return jsonify({'error': 'ログインが必要です'}), 401
         return f(*args, **kwargs)
     return wrapper
@@ -99,7 +104,6 @@ def require_login(f):
 
 @app.route('/quiz_data', methods=['GET'])
 def get_all_quizzes():
-    # 閲覧(GET)は誰でも自由にできるようにする(ログイン不要)
     limit = request.args.get('limit', default=20, type=int)
     res = requests.get(
         f'{SUPABASE_URL}/rest/v1/quiz_data',

@@ -5,7 +5,7 @@ CRUD操作の実装から、フロントエンド/バックエンドの分離、
 
 ## 🔗 デモ
 
-- フロントエンド(Vercel): https://store-iphone-unko.vercel.app/index.html
+- フロントエンド(Vercel): https://store-iphone-portfolio.vercel.app/index.html
 - バックエンドAPI(Render): https://store-iphone.onrender.com
 
 閲覧(データ一覧の取得)は誰でも可能です。保存・編集・削除には管理者ログインが必要です。

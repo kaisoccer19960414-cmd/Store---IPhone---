@@ -1,7 +1,8 @@
-from flask import Flask, request, jsonify, session, render_template_string
+from flask import Flask, request, jsonify, session, render_template_string, redirect
 from flask_cors import CORS
 from dotenv import load_dotenv
 from functools import wraps
+from urllib.parse import urlparse
 import os
 import requests
 
@@ -40,6 +41,7 @@ LOGIN_PAGE = """
 <body style="font-family: sans-serif; max-width: 400px; margin: 80px auto;">
   <h2>管理者ログイン</h2>
   <form method="POST">
+    <input type="hidden" name="next" value="{{ next_url }}">
     <input type="password" name="passcode" placeholder="パスコード" autofocus
            style="font-size: 1.2em; padding: 8px; width: 100%; box-sizing: border-box;">
     <button type="submit" style="margin-top: 10px; padding: 8px 20px;">ログイン</button>
@@ -51,16 +53,33 @@ LOGIN_PAGE = """
 """
 
 
+def is_safe_redirect(url):
+    """許可したフロントのドメインへのリダイレクトだけを許可する(オープンリダイレクト対策)"""
+    if not url:
+        return False
+    parsed = urlparse(url)
+    allowed = urlparse(FRONTEND_ORIGIN)
+    return parsed.scheme == allowed.scheme and parsed.netloc == allowed.netloc
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    # ?next=... で「ログイン後にどこへ戻るか」を受け取る
+    next_url = request.values.get('next', '')
+
     if request.method == 'POST':
         passcode = request.form.get('passcode')
         if passcode == APP_PASSCODE:
             session['authenticated'] = True
             session.permanent = True
-            return render_template_string(LOGIN_PAGE, success=True)
-        return render_template_string(LOGIN_PAGE, error='パスコードが違います')
-    return render_template_string(LOGIN_PAGE)
+
+            if is_safe_redirect(next_url):
+                return redirect(next_url)  # ← 元のページへ自動で戻す
+            return render_template_string(LOGIN_PAGE, success=True, next_url=next_url)
+
+        return render_template_string(LOGIN_PAGE, error='パスコードが違います', next_url=next_url)
+
+    return render_template_string(LOGIN_PAGE, next_url=next_url)
 
 
 @app.route('/logout', methods=['POST'])

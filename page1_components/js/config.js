@@ -12,4 +12,4 @@ export const LOCAL_API_URL = 'http://127.0.0.1:5000';
 */
 
 // 変更後(Renderで発行された本物のURLに置き換え)
-export const LOCAL_API_URL = 'https://store-iphone-xxxx.onrender.com';
+export const LOCAL_API_URL = 'https://store-iphone.onrender.com';

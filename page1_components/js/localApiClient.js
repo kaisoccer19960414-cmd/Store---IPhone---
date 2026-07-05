@@ -1,16 +1,11 @@
-//ローカルサーバー(python)で試す版のJavascriptコード
 import { LOCAL_API_URL } from './config.js';
 
 export async function localApiRequest(path, options = {}) {
   try {
     const response = await fetch(`${LOCAL_API_URL}/${path}`, {
       ...options,
+      credentials: 'include',
       headers: {
-        //'Content-Type': 'application/json',
-        //'X-App-Passcode': '1111',
-
-         credentials: 'include', // ← ログイン時のCookie(認証の印)を一緒に送る
-          headers: {
         'Content-Type': 'application/json',
         ...options.headers
       }

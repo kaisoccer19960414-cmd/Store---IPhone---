@@ -4,9 +4,6 @@ import { supabaseRequest } from './supabaseClient.js';
 
 const request = USE_LOCAL_API ? localApiRequest : supabaseRequest;
 
-
-
-
 export function createQuiz(question) {
   return request('quiz_data', {
     method: 'POST',
@@ -16,19 +13,31 @@ export function createQuiz(question) {
 }
 
 export function fetchLatestQuiz() {
-  return request('quiz_data?order=id.desc&limit=1');
+  const path = USE_LOCAL_API
+    ? 'quiz_data?limit=1'
+    : 'quiz_data?order=id.desc&limit=1';
+  return request(path);
 }
 
 export function fetchAllQuizzes(limit = 20) {
-  return request(`quiz_data?order=id.desc&limit=${limit}`);
+  const path = USE_LOCAL_API
+    ? `quiz_data?limit=${limit}`
+    : `quiz_data?order=id.desc&limit=${limit}`;
+  return request(path);
 }
 
 export function deleteQuiz(id) {
-  return request(`quiz_data?id=eq.${id}`, { method: 'DELETE' });
+  const path = USE_LOCAL_API
+    ? `quiz_data/${id}`        // Flask版: URLのパスにIDを埋め込む
+    : `quiz_data?id=eq.${id}`; // Supabase版: クエリパラメータでIDを指定
+  return request(path, { method: 'DELETE' });
 }
 
 export function updateQuiz(id, question) {
-  return request(`quiz_data?id=eq.${id}`, {
+  const path = USE_LOCAL_API
+    ? `quiz_data/${id}`
+    : `quiz_data?id=eq.${id}`;
+  return request(path, {
     method: 'PATCH',
     headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify({ question })

@@ -17,7 +17,7 @@ serializer = URLSafeTimedSerializer(SECRET_KEY)
 TOKEN_MAX_AGE = 60 * 60 * 24 * 7  # トークンの有効期限: 7日間
 
 # Safari等のクロスサイトCookie制限を回避するため、Cookieには頼らずトークン方式にする
-FRONTEND_ORIGIN = os.environ.get('FRONTEND_ORIGIN', 'https://store-iphone-portfolio.vercel.app/index.html')
+FRONTEND_ORIGIN = os.environ.get('FRONTEND_ORIGIN', 'https://store-iphone-portfolio.vercel.app')
 CORS(app, origins=[FRONTEND_ORIGIN])
 
 APP_PASSCODE = os.environ.get('APP_PASSCODE')

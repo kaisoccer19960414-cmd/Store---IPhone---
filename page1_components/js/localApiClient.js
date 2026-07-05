@@ -1,7 +1,8 @@
 import { LOCAL_API_URL } from './config.js';
-import { getToken } from './authClient.js';
+import { getToken, savePendingRequest } from './authClient.js';
 
-export async function localApiRequest(path, options = {}) {
+// successMessage: ログイン待ちで中断された場合に、戻ってきた後の自動再送信で使うメッセージ
+export async function localApiRequest(path, options = {}, successMessage = null) {
   try {
     const token = getToken();
 
@@ -14,8 +15,11 @@ export async function localApiRequest(path, options = {}) {
       }
     });
 
-    // ログインが必要なのにトークンが無い/無効な場合、自動でログイン画面へ飛ばす
+    // ログインが必要なのにトークンが無い/無効な場合
     if (response.status === 401) {
+      // 今送ろうとしていた内容を保存しておき、ログイン後に自動で再送信できるようにする
+      savePendingRequest(path, options, successMessage);
+
       const currentPageUrl = window.location.href;
       const loginUrl = `${LOCAL_API_URL}/login?next=${encodeURIComponent(currentPageUrl)}`;
       window.location.href = loginUrl;

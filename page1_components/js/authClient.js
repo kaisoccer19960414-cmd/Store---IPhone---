@@ -23,3 +23,20 @@ export function getToken() {
 export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
+
+// --- ログイン待ちで中断されたリクエストを、一時的に保管する仕組み ---
+const PENDING_KEY = 'app_pending_request';
+
+// 「送ろうとしていた内容」+「成功した時に表示するメッセージ」をまとめて保存
+export function savePendingRequest(path, options, successMessage) {
+  localStorage.setItem(PENDING_KEY, JSON.stringify({ path, options, successMessage }));
+}
+
+export function getPendingRequest() {
+  const raw = localStorage.getItem(PENDING_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+
+export function clearPendingRequest() {
+  localStorage.removeItem(PENDING_KEY);
+}

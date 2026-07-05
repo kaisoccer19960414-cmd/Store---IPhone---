@@ -9,7 +9,7 @@ export function createQuiz(question) {
     method: 'POST',
     headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify({ question })
-  });
+  }, 'クラウドDBへの保存に成功しました！');
 }
 
 export function fetchLatestQuiz() {
@@ -28,9 +28,9 @@ export function fetchAllQuizzes(limit = 20) {
 
 export function deleteQuiz(id) {
   const path = USE_LOCAL_API
-    ? `quiz_data/${id}`        // Flask版: URLのパスにIDを埋め込む
-    : `quiz_data?id=eq.${id}`; // Supabase版: クエリパラメータでIDを指定
-  return request(path, { method: 'DELETE' });
+    ? `quiz_data/${id}`
+    : `quiz_data?id=eq.${id}`;
+  return request(path, { method: 'DELETE' }, '削除しました！');
 }
 
 export function updateQuiz(id, question) {
@@ -41,5 +41,5 @@ export function updateQuiz(id, question) {
     method: 'PATCH',
     headers: { 'Prefer': 'return=representation' },
     body: JSON.stringify({ question })
-  });
+  }, '更新しました！');
 }

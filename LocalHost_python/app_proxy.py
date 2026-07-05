@@ -5,6 +5,8 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from functools import wraps
 from urllib.parse import urlparse
 import os
+import time
+import secrets as secrets_module
 import requests
 
 load_dotenv()
@@ -15,6 +17,34 @@ app.json.ensure_ascii = False
 SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'dev-only-fallback-key')
 serializer = URLSafeTimedSerializer(SECRET_KEY)
 TOKEN_MAX_AGE = 60 * 60 * 24 * 7  # トークンの有効期限: 7日間
+
+# --- ログイン試行回数の制限(総当たり攻撃対策) ---
+# IPアドレスごとに「失敗回数」と「ロックが解除される時刻」を記録する
+# (ポートフォリオ規模の簡易実装。本格運用ならRedis等の永続ストレージを使う)
+LOGIN_ATTEMPTS = {}
+MAX_ATTEMPTS = 5          # この回数間違えたら
+LOCKOUT_SECONDS = 300     # 5分間ロックする
+
+
+def is_locked_out(ip):
+    record = LOGIN_ATTEMPTS.get(ip)
+    if not record:
+        return False
+    if record['count'] >= MAX_ATTEMPTS and time.time() < record['locked_until']:
+        return True
+    return False
+
+
+def register_failed_attempt(ip):
+    record = LOGIN_ATTEMPTS.setdefault(ip, {'count': 0, 'locked_until': 0})
+    record['count'] += 1
+    if record['count'] >= MAX_ATTEMPTS:
+        record['locked_until'] = time.time() + LOCKOUT_SECONDS
+
+
+def reset_attempts(ip):
+    LOGIN_ATTEMPTS.pop(ip, None)
+
 
 # Safari等のクロスサイトCookie制限を回避するため、Cookieには頼らずトークン方式にする
 FRONTEND_ORIGIN = os.environ.get('FRONTEND_ORIGIN', 'https://store-iphone-portfolio.vercel.app')
@@ -66,17 +96,26 @@ def add_token_to_url(url, token):
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     next_url = request.values.get('next', '')
+    client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
 
     if request.method == 'POST':
-        passcode = request.form.get('passcode')
-        if passcode == APP_PASSCODE:
-            # パスコード確認後、署名付きの「合言葉」を1回だけ発行する
+        if is_locked_out(client_ip):
+            return render_template_string(
+                LOGIN_PAGE,
+                error='試行回数が多すぎます。5分ほど待ってから再度お試しください。',
+                next_url=next_url
+            ), 429
+        passcode = request.form.get('passcode') or ''
+        # secrets.compare_digest: 文字列比較にかかる時間を一定にし、タイミング攻撃を防ぐ
+        if APP_PASSCODE and secrets_module.compare_digest(passcode, APP_PASSCODE):
+            reset_attempts(client_ip)  # ログイン成功したので失敗カウントをリセット
             token = serializer.dumps({'authenticated': True})
 
             if is_safe_redirect(next_url):
                 return redirect(add_token_to_url(next_url, token))
-            return jsonify({'token': token})  # next無しで直接開いた場合はそのまま表示
+            return jsonify({'token': token})
 
+        register_failed_attempt(client_ip)  # 失敗を記録
         return render_template_string(LOGIN_PAGE, error='パスコードが違います', next_url=next_url)
 
     return render_template_string(LOGIN_PAGE, next_url=next_url)

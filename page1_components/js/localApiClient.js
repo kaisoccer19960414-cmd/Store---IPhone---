@@ -29,23 +29,27 @@ async function loginWithPrompt() {
 }
 
 export async function localApiRequest(path, options = {}) {
+   // silent: true にすると、ローディング表示を出さずに裏で静かに通信する
+   const { silent = false, ...fetchOptions } = options;
+  
   try {
     let token = getToken();
 
-    showLoading('サーバーと通信中...\n(初回はRenderの起動に時間がかかることがあります)');
+    if (!silent) {
+    showLoading('サーバーと通信中...\n(初回はRenderの起動に時間がかかることがあります)');}
 
     let response;
     try {
       response = await fetch(`${LOCAL_API_URL}/${path}`, {
-        ...options,
+        ...fetchOptions,
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          ...options.headers
+          ...fetchOptions.headers
         }
       });
     } finally {
-      hideLoading();
+        if (!silent)hideLoading();
     }
 
     if (response.status === 401) {
@@ -54,18 +58,18 @@ export async function localApiRequest(path, options = {}) {
         return { data: null, error: 'ログインがキャンセルされました' };
       }
 
-      showLoading('サーバーと通信中...');
+        if (!silent)showLoading('サーバーと通信中...');
       try {
         response = await fetch(`${LOCAL_API_URL}/${path}`, {
-          ...options,
+          ...fetchOptions,
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${newToken}`,
-            ...options.headers
+            ...fetchOptions.headers
           }
         });
       } finally {
-        hideLoading();
+        if (!silent)hideLoading();
       }
     }
 
@@ -79,7 +83,7 @@ export async function localApiRequest(path, options = {}) {
     return { data, error: null };
 
   } catch (err) {
-    hideLoading();
+    if (!silent)hideLoading();
     console.error('ローカルAPI通信エラー:', err);
     return { data: null, error: err.message };
   }

@@ -19,11 +19,11 @@ export function fetchLatestQuiz() {
   return request(path);
 }
 
-export function fetchAllQuizzes(limit = 20, silent = false) {
+export function fetchAllQuizzes(limit = 20) {
   const path = USE_LOCAL_API
     ? `quiz_data?limit=${limit}`
     : `quiz_data?order=id.desc&limit=${limit}`;
-  return request(path,{ silent });
+  return request(path);
 }
 
 export function deleteQuiz(id) {

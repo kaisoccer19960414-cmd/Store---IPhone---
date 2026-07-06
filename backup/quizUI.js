@@ -18,7 +18,7 @@ export async function saveToDB() {
 
   await showAlert('クラウドDBへの保存に成功しました！');
   input.value = '';
-  renderAllQuizzes(true);
+  renderAllQuizzes();
 }
 
 export async function readFromDB() {
@@ -48,7 +48,7 @@ async function handleEdit(id, currentText) {
   }
 
   await showAlert('更新しました！');
-  renderAllQuizzes(true);
+  renderAllQuizzes();
 }
 
 async function handleDelete(id) {
@@ -63,7 +63,7 @@ async function handleDelete(id) {
   }
 
   await showAlert('削除しました！');
-  renderAllQuizzes(true);
+  renderAllQuizzes();
 }
 
 export async function toggleQuizList() {
@@ -80,7 +80,7 @@ export async function toggleQuizList() {
   await renderAllQuizzes();
 }
 
-export async function renderAllQuizzes(silent = false) {
+export async function renderAllQuizzes() {
   const table = document.getElementById('data-table');
   const tbody = document.getElementById('table-body');
   const status = document.getElementById('list-status');
@@ -89,7 +89,7 @@ export async function renderAllQuizzes(silent = false) {
   table.style.display = 'none';
   tbody.innerHTML = '';
 
-  const { data, error } = await fetchAllQuizzes(20, silent);
+  const { data, error } = await fetchAllQuizzes();
 
   if (error) {
     status.innerText = `データの取得に失敗しました。(${error})`;

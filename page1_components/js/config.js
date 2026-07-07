@@ -1,5 +1,10 @@
 
-export const USE_LOCAL_API = true; // trueならFlask版、falseならSupabase版 (超重要！！)
+export const USE_LOCAL_API = true; // trueならFlask版。
+
+// falseなら、USE_LOCAL_API = false → Flaskを完全に飛ばして、フロントから直接Supabaseに繋ぐ
+//falseの方は、**「まだFlaskの認証システムを作る前、一番最初の実験段階」**で使っていたものです。
+// あの頃はまだservice_role_keyも無く、
+// Flaskで守る仕組みも無かったので、フロントが直接Supabaseのanon_keyを使って通信していました。
 
 
 // Supabase(クラウド版)

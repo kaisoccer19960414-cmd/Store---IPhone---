@@ -1,0 +1,8 @@
+{
+  "name": "store-iphone-frontend-config",
+  "private": true,
+  "scripts": {
+    "local": "node page1_components/js/switch-config.js local",
+    "prod": "node page1_components/js/switch-config.js prod"
+  }
+}

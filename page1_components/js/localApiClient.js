@@ -1,4 +1,4 @@
-import { LOCAL_API_URL } from './config.js';
+import { API_BASE_URL } from './config.js';
 import { getToken, setToken } from './authClient.js';
 import { showAlert, showPrompt, showLoading, hideLoading } from './modal.js';
 
@@ -8,7 +8,7 @@ async function loginWithPrompt() {
 
   showLoading('ログイン中...');
   try {
-    const res = await fetch(`${LOCAL_API_URL}/login`, {
+    const res = await fetch(`${API_BASE_URL}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ passcode })
@@ -29,18 +29,19 @@ async function loginWithPrompt() {
 }
 
 export async function localApiRequest(path, options = {}) {
-   // silent: true にすると、ローディング表示を出さずに裏で静かに通信する
-   const { silent = false, ...fetchOptions } = options;
-  
+  // silent: true にすると、ローディング表示を出さずに裏で静かに通信する
+  const { silent = false, ...fetchOptions } = options;
+
   try {
     let token = getToken();
 
     if (!silent) {
-    showLoading('サーバーと通信中...\n(初回はRenderの起動に時間がかかることがあります)');}
+      showLoading('サーバーと通信中...\n(初回はRenderの起動に時間がかかることがあります)');
+    }
 
     let response;
     try {
-      response = await fetch(`${LOCAL_API_URL}/${path}`, {
+      response = await fetch(`${API_BASE_URL}/${path}`, {
         ...fetchOptions,
         headers: {
           'Content-Type': 'application/json',
@@ -49,7 +50,7 @@ export async function localApiRequest(path, options = {}) {
         }
       });
     } finally {
-        if (!silent)hideLoading();
+      if (!silent) hideLoading();
     }
 
     if (response.status === 401) {
@@ -58,9 +59,9 @@ export async function localApiRequest(path, options = {}) {
         return { data: null, error: 'ログインがキャンセルされました' };
       }
 
-        if (!silent)showLoading('サーバーと通信中...');
+      if (!silent) showLoading('サーバーと通信中...');
       try {
-        response = await fetch(`${LOCAL_API_URL}/${path}`, {
+        response = await fetch(`${API_BASE_URL}/${path}`, {
           ...fetchOptions,
           headers: {
             'Content-Type': 'application/json',
@@ -69,7 +70,7 @@ export async function localApiRequest(path, options = {}) {
           }
         });
       } finally {
-        if (!silent)hideLoading();
+        if (!silent) hideLoading();
       }
     }
 
@@ -83,7 +84,7 @@ export async function localApiRequest(path, options = {}) {
     return { data, error: null };
 
   } catch (err) {
-    if (!silent)hideLoading();
+    if (!silent) hideLoading();
     console.error('ローカルAPI通信エラー:', err);
     return { data: null, error: err.message };
   }

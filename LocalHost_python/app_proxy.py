@@ -49,6 +49,11 @@ def reset_attempts(ip):
 # Safari等のクロスサイトCookie制限を回避するため、Cookieには頼らずトークン方式にする
 FRONTEND_ORIGIN = os.environ.get('FRONTEND_ORIGIN', 'https://store-iphone-portfolio.vercel.app')
 
+# Vercelのプレビューデプロイは "store-iphone-portfolio-git-〇〇-ユーザー名.vercel.app" のような
+# 規則的な名前になるため、正規表現で「store-iphone-portfolioから始まり、.vercel.appで終わる」
+# URLはまとめて許可する(プレビューURLをpushのたびに手動追加しなくて済むようにする)
+PREVIEW_ORIGIN_PATTERN = r'^https://store-iphone-portfolio.*\.vercel\.app$'
+
 # ローカルでのLive Server等でのテストも許可する(本番URL + ローカルの定番ポートいくつか)
 LOCAL_TEST_ORIGINS = [
     'http://127.0.0.1:5500',
@@ -56,7 +61,7 @@ LOCAL_TEST_ORIGINS = [
     'http://127.0.0.1:5501',
     'http://localhost:5501',
 ]
-CORS(app, origins=[FRONTEND_ORIGIN, *LOCAL_TEST_ORIGINS])
+CORS(app, origins=[PREVIEW_ORIGIN_PATTERN, *LOCAL_TEST_ORIGINS])
 
 APP_PASSCODE = os.environ.get('APP_PASSCODE')
 SUPABASE_URL = os.environ.get('SUPABASE_URL')

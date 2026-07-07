@@ -44,7 +44,7 @@ export async function saveToDB() {
 
   await showAlert('クラウドDBへの保存に成功しました！');
   input.value = '';
-  renderAllQuizzes(true); // 一覧の裏側での再取得は、ローディング表示を出さず静かに行う
+  renderAllQuizzes(true, true); // 一覧の裏側での再取得は、ローディング表示を出さず静かに、最初から表示し直す
 }
 
 export async function readFromDB() {
@@ -74,7 +74,7 @@ async function handleEdit(id, currentText) {
   }
 
   await showAlert('更新しました！');
-  renderAllQuizzes(true);
+  renderAllQuizzes(true, true);
 }
 
 async function handleDelete(id) {
@@ -89,8 +89,11 @@ async function handleDelete(id) {
   }
 
   await showAlert('削除しました！');
-  renderAllQuizzes(true);
+  renderAllQuizzes(true, true);
 }
+
+const PAGE_SIZE = 20;
+let currentOffset = 0; // 「今、何件目まで表示しているか」を覚えておく
 
 export async function toggleQuizList() {
   const table = document.getElementById('data-table');
@@ -103,28 +106,30 @@ export async function toggleQuizList() {
     return;
   }
 
-  await renderAllQuizzes();
+  await renderAllQuizzes(false, true); // 開く時は必ず最初(1件目)からやり直す
 }
 
-export async function renderAllQuizzes(silent = false) {
+// reset=true: 最初からやり直す(offsetを0に戻し、既存の行を消す)
+// reset=false: 続きから追加する(「もっと見る」ボタン用)
+export async function renderAllQuizzes(silent = false, reset = true) {
   const table = document.getElementById('data-table');
   const tbody = document.getElementById('table-body');
   const status = document.getElementById('list-status');
+  const loadMoreBtn = document.getElementById('load-more-btn');
+
+  if (reset) {
+    currentOffset = 0;
+    tbody.innerHTML = '';
+  }
 
   status.innerText = '読み込み中...';
-  table.style.display = 'none';
-  tbody.innerHTML = '';
 
-  const { data, error } = await fetchAllQuizzes(20, silent);
+  const { data, error } = await fetchAllQuizzes(PAGE_SIZE, currentOffset, silent);
 
   if (error) {
     status.innerText = `データの取得に失敗しました。(${error})`;
     return;
   }
-
-  status.innerText = data.length === 0
-    ? 'データが空っぽです。'
-    : `合計 ${data.length} 件のデータを表示しています。`;
 
   data.forEach(item => {
     const row = document.createElement('tr');
@@ -156,5 +161,23 @@ export async function renderAllQuizzes(silent = false) {
     tbody.appendChild(row);
   });
 
+  currentOffset += data.length; // 次回「もっと見る」を押した時のために、位置を進めておく
+
+  const totalShown = tbody.querySelectorAll('tr').length;
+  status.innerText = totalShown === 0
+    ? 'データが空っぽです。'
+    : `${totalShown} 件を表示中です。`;
+
+  // 取れた件数がPAGE_SIZEちょうどなら、まだ続きがある可能性が高い→ボタンを出す
+  // PAGE_SIZE未満なら、もうこれ以上データが無いということ→ボタンを隠す
+  if (loadMoreBtn) {
+    loadMoreBtn.style.display = data.length === PAGE_SIZE ? 'inline-block' : 'none';
+  }
+
   table.style.display = 'table';
+}
+
+// 「もっと見る」ボタンから呼ばれる
+export async function loadMoreQuizzes() {
+  await renderAllQuizzes(false, false); // 続きから追加(消さずに継ぎ足す)
 }

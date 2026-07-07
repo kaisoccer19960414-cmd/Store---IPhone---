@@ -29,10 +29,10 @@ export function fetchLatestQuiz() {
   return request(path);
 }
 
-export function fetchAllQuizzes(limit = 20, silent = false) {
+export function fetchAllQuizzes(limit = 20, offset = 0, silent = false) {
   const path = USE_LOCAL_API
-    ? `quiz_data?limit=${limit}`
-    : `quiz_data?order=id.desc&limit=${limit}`;
+    ? `quiz_data?limit=${limit}&offset=${offset}`
+    : `quiz_data?order=id.desc&limit=${limit}&offset=${offset}`;
   return request(path, { silent });
 }
 

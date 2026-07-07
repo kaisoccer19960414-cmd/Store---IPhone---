@@ -161,6 +161,7 @@ def require_login(f):
 @app.route('/quiz_data', methods=['GET'])
 def get_all_quizzes():
     limit = request.args.get('limit', default=20, type=int)
+    offset = request.args.get('offset', default=0, type=int)
     res = requests.get(
         f'{SUPABASE_URL}/rest/v1/quiz_data',
         headers=SUPABASE_HEADERS,
@@ -168,7 +169,8 @@ def get_all_quizzes():
             # select= の中で「authors(name)」と書くと、外部キーを辿ってJOINしてくれる
             'select': 'id,question,author_id,authors(name)',
             'order': 'id.desc',
-            'limit': limit
+            'limit': limit,
+            'offset': offset
         }
     )
     return jsonify(res.json()), res.status_code

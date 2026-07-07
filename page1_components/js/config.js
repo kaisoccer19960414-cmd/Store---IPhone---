@@ -8,8 +8,8 @@ export const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdX
 
 
  //ローカルFlask版
-export const LOCAL_API_URL = 'http://127.0.0.1:5000';
+//export const LOCAL_API_URL = 'http://127.0.0.1:5000';
 
 
 // 変更後(Renderで発行された本物のURLに置き換え)
-//export const LOCAL_API_URL = 'https://store-iphone.onrender.com';
+export const LOCAL_API_URL = 'https://store-iphone.onrender.com';

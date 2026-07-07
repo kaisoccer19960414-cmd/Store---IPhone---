@@ -4,12 +4,22 @@ import { supabaseRequest } from './supabaseClient.js';
 
 const request = USE_LOCAL_API ? localApiRequest : supabaseRequest;
 
-export function createQuiz(question) {
+export function createQuiz(question, authorId = null) {
+  const body = { question };
+  if (authorId) body.author_id = authorId;
+
   return request('quiz_data', {
     method: 'POST',
     headers: { 'Prefer': 'return=representation' },
-    body: JSON.stringify({ question })
+    body: JSON.stringify(body)
   }, 'クラウドDBへの保存に成功しました！');
+}
+
+export function fetchAuthors() {
+  const path = USE_LOCAL_API
+    ? 'authors'
+    : 'authors?select=id,name&order=name.asc';
+  return request(path);
 }
 
 export function fetchLatestQuiz() {
@@ -23,7 +33,7 @@ export function fetchAllQuizzes(limit = 20, silent = false) {
   const path = USE_LOCAL_API
     ? `quiz_data?limit=${limit}`
     : `quiz_data?order=id.desc&limit=${limit}`;
-  return request(path,{ silent });
+  return request(path, { silent });
 }
 
 export function deleteQuiz(id) {

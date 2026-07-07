@@ -48,7 +48,15 @@ def reset_attempts(ip):
 
 # Safari等のクロスサイトCookie制限を回避するため、Cookieには頼らずトークン方式にする
 FRONTEND_ORIGIN = os.environ.get('FRONTEND_ORIGIN', 'https://store-iphone-portfolio.vercel.app')
-CORS(app, origins=[FRONTEND_ORIGIN])
+
+# ローカルでのLive Server等でのテストも許可する(本番URL + ローカルの定番ポートいくつか)
+LOCAL_TEST_ORIGINS = [
+    'http://127.0.0.1:5500',
+    'http://localhost:5500',
+    'http://127.0.0.1:5501',
+    'http://localhost:5501',
+]
+CORS(app, origins=[FRONTEND_ORIGIN, *LOCAL_TEST_ORIGINS])
 
 APP_PASSCODE = os.environ.get('APP_PASSCODE')
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
@@ -156,7 +164,23 @@ def get_all_quizzes():
     res = requests.get(
         f'{SUPABASE_URL}/rest/v1/quiz_data',
         headers=SUPABASE_HEADERS,
-        params={'order': 'id.desc', 'limit': limit}
+        params={
+            # select= の中で「authors(name)」と書くと、外部キーを辿ってJOINしてくれる
+            'select': 'id,question,author_id,authors(name)',
+            'order': 'id.desc',
+            'limit': limit
+        }
+    )
+    return jsonify(res.json()), res.status_code
+
+
+@app.route('/authors', methods=['GET'])
+def get_all_authors():
+    """投稿者の一覧(選択肢に使う。閲覧は誰でも可)"""
+    res = requests.get(
+        f'{SUPABASE_URL}/rest/v1/authors',
+        headers=SUPABASE_HEADERS,
+        params={'select': 'id,name', 'order': 'name.asc'}
     )
     return jsonify(res.json()), res.status_code
 
@@ -168,10 +192,14 @@ def create_quiz():
     if not body or not body.get('question') or not body['question'].strip():
         return jsonify({'error': 'question is required'}), 400
 
+    payload = {'question': body['question'].strip()}
+    if body.get('author_id'):
+        payload['author_id'] = body['author_id']
+
     res = requests.post(
         f'{SUPABASE_URL}/rest/v1/quiz_data',
         headers={**SUPABASE_HEADERS, 'Prefer': 'return=representation'},
-        json={'question': body['question'].strip()}
+        json=payload
     )
     return jsonify(res.json()), res.status_code
 

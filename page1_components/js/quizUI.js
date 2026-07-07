@@ -1,5 +1,27 @@
-import { createQuiz, fetchLatestQuiz, fetchAllQuizzes, deleteQuiz, updateQuiz } from './quizApi.js';
+import { createQuiz, fetchLatestQuiz, fetchAllQuizzes, deleteQuiz, updateQuiz, fetchAuthors } from './quizApi.js';
 import { showAlert, showConfirm, showPrompt } from './modal.js';
+
+// ページ読み込み時に一度だけ呼ぶ想定。投稿者一覧を取得してドロップダウンに入れる
+export async function initAuthorSelect() {
+  const select = document.getElementById('author-select');
+  if (!select) return; // HTML側にまだ用意していなければ何もしない
+
+  const { data, error } = await fetchAuthors();
+  if (error || !data) return;
+
+  // 「指定なし」の選択肢を先頭に用意しておく
+  const noneOption = document.createElement('option');
+  noneOption.value = '';
+  noneOption.textContent = '(投稿者を選択)';
+  select.appendChild(noneOption);
+
+  data.forEach(author => {
+    const option = document.createElement('option');
+    option.value = author.id;
+    option.textContent = author.name;
+    select.appendChild(option);
+  });
+}
 
 export async function saveToDB() {
   const input = document.getElementById('input-text');
@@ -9,7 +31,11 @@ export async function saveToDB() {
     return;
   }
 
-  const { data, error } = await createQuiz(textValue);
+  // ドロップダウンが存在すれば、選ばれているauthor_idを取得する
+  const authorSelect = document.getElementById('author-select');
+  const authorId = authorSelect?.value || null;
+
+  const { data, error } = await createQuiz(textValue, authorId);
 
   if (error) {
     await showAlert(`保存に失敗しました。\n理由: ${error}`);
@@ -18,7 +44,7 @@ export async function saveToDB() {
 
   await showAlert('クラウドDBへの保存に成功しました！');
   input.value = '';
-  renderAllQuizzes(true);
+  renderAllQuizzes(true); // 一覧の裏側での再取得は、ローディング表示を出さず静かに行う
 }
 
 export async function readFromDB() {
@@ -108,6 +134,11 @@ export async function renderAllQuizzes(silent = false) {
       td.textContent = item[key] ?? (key === 'id' ? '-' : '');
       row.appendChild(td);
     });
+
+    // authorsは { name: '...' } という入れ子のオブジェクトで返ってくる
+    const authorTd = document.createElement('td');
+    authorTd.textContent = item.authors?.name ?? '(未設定)';
+    row.appendChild(authorTd);
 
     const actionTd = document.createElement('td');
 

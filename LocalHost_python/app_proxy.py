@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify, render_template_string, redirect
 from flask_cors import CORS
 from dotenv import load_dotenv
-from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+import jwt  # PyJWT本物のJWT規格でトークンを発行・検証する
 from functools import wraps
 from urllib.parse import urlparse
 import os
 import re
 import time
+import datetime
 import secrets as secrets_module
 import requests
 
@@ -16,8 +17,7 @@ app = Flask(__name__)
 app.json.ensure_ascii = False
 
 SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'dev-only-fallback-key')
-serializer = URLSafeTimedSerializer(SECRET_KEY)
-TOKEN_MAX_AGE = 60 * 60 * 24 * 7  # トークンの有効期限: 7日間
+TOKEN_MAX_AGE = 60 * 60 * 24 * 7  # トークンの有効期限: 7日間(秒)
 
 # --- ログイン試行回数の制限(総当たり攻撃対策) ---
 # IPアドレスごとに「失敗回数」と「ロックが解除される時刻」を記録する
@@ -127,7 +127,7 @@ def login():
 
         if APP_PASSCODE and secrets_module.compare_digest(passcode, APP_PASSCODE):
             reset_attempts(client_ip)
-            token = serializer.dumps({'authenticated': True})
+            token = create_jwt_token()
 
             if is_json_request:
                 return jsonify({'token': token})  # ページ遷移せず、トークンだけ返す
@@ -144,12 +144,25 @@ def login():
     return render_template_string(LOGIN_PAGE, next_url=next_url)
 
 
+def create_jwt_token():
+    """JWTを1つ発行する。ペイロード(中身)に有効期限(exp)を埋め込む"""
+    payload = {
+        'authenticated': True,
+        # exp(expiration): JWTの正式な予約フィールド。この時刻を過ぎたトークンは自動的に無効になる
+        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=TOKEN_MAX_AGE)
+    }
+    # HS256: 秘密鍵1つで署名・検証する、最も標準的なアルゴリズム
+    return jwt.encode(payload, SECRET_KEY, algorithm='HS256')
+
+
 def verify_token(token):
     try:
-        data = serializer.loads(token, max_age=TOKEN_MAX_AGE)
+        data = jwt.decode(token, SECRET_KEY, algorithms=['HS256'])
         return data.get('authenticated') is True
-    except (BadSignature, SignatureExpired):
-        return False
+    except jwt.ExpiredSignatureError:
+        return False  # 有効期限切れ
+    except jwt.InvalidTokenError:
+        return False  # 署名が合わない・改ざんされている等
 
 
 def require_login(f):

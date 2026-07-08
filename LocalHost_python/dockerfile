@@ -1,0 +1,19 @@
+# どのPythonのバージョンを土台にするか(Renderで動かしていたバージョンに合わせる)
+FROM python:3.11-slim
+
+# コンテナ(箱)の中の作業フォルダを指定する
+WORKDIR /app
+
+# 先にrequirements.txtだけコピーして、ライブラリをインストールする
+# (コードより先にこれをやることで、コード変更時の再ビルドが速くなる)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 残りのコード全部をコンテナの中にコピーする
+COPY . .
+
+# このコンテナが「5000番のポートを使う」ということを明記しておく
+EXPOSE 5000
+
+# コンテナが起動した時に、実際に実行するコマンド
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app_proxy:app"]

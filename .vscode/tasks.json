@@ -1,0 +1,24 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "1. configをlocalに切り替え",
+      "type": "shell",
+      "command": "npm run local",
+      "problemMatcher": []
+    },
+    {
+      "label": "2. Flaskを起動",
+      "type": "shell",
+      "command": "cd LocalHost_python; python app_proxy.py",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "開発開始(まとめて実行)",
+      "dependsOn": ["1. configをlocalに切り替え", "2. Flaskを起動"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    }
+  ]
+}

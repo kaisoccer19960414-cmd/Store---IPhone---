@@ -1,6 +1,16 @@
 import { createQuiz, fetchLatestQuiz, fetchAllQuizzes, deleteQuiz, updateQuiz, fetchAuthors } from './quizApi.js';
 import { showAlert, showConfirm, showPrompt } from './modal.js';
 
+// DBから返ってくる日時文字列(ISO形式)を、見やすい日本語表記に変換する
+function formatDateTime(isoString) {
+  if (!isoString) return '-';
+  const date = new Date(isoString); // ブラウザが自動でローカルの時刻に変換してくれる
+  return date.toLocaleString('ja-JP', {
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
 // ページ読み込み時に一度だけ呼ぶ想定。投稿者一覧を取得してドロップダウンに入れる
 export async function initAuthorSelect() {
   const select = document.getElementById('author-select');
@@ -144,6 +154,11 @@ export async function renderAllQuizzes(silent = false, reset = true) {
     const authorTd = document.createElement('td');
     authorTd.textContent = item.authors?.name ?? '(未設定)';
     row.appendChild(authorTd);
+
+    // 日時は "2026-07-08T10:30:00+00:00" のような形式で返ってくるので、見やすい形に整形する
+    const dateTd = document.createElement('td');
+    dateTd.textContent = formatDateTime(item.created_at);
+    row.appendChild(dateTd);
 
     const actionTd = document.createElement('td');
 

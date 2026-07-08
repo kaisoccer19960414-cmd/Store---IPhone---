@@ -173,7 +173,7 @@ def get_all_quizzes():
         headers=SUPABASE_HEADERS,
         params={
             # select= の中で「authors(name)」と書くと、外部キーを辿ってJOINしてくれる
-            'select': 'id,question,author_id,authors(name)',
+            'select': 'id,question,author_id,authors(name),created_at,updated_at',
             'order': 'id.desc',
             'limit': limit,
             'offset': offset

@@ -211,7 +211,7 @@ def get_all_authors():
 def create_quiz():
     body = request.get_json(silent=True)
     if not body or not body.get('question') or not body['question'].strip():
-        return jsonify({'error': 'question is required'}), 200
+        return jsonify({'error': 'question is required'}), 400
 
     payload = {'question': body['question'].strip()}
     if body.get('author_id'):

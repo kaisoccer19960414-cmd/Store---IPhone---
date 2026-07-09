@@ -1,5 +1,5 @@
 import pytest
-from app_proxy import app
+from app_proxy import app, create_jwt_token
 
 
 @pytest.fixture
@@ -8,6 +8,13 @@ def client():
     app.config['TESTING'] = True
     with app.test_client() as client:
         yield client
+
+
+@pytest.fixture
+def auth_headers():
+    """本物のパスコード入力を再現する代わりに、アプリ自身の関数で正しいトークンを直接発行する"""
+    token = create_jwt_token()
+    return {'Authorization': f'Bearer {token}'}
 
 
 def test_一覧取得はログイン不要で成功する(client):
@@ -21,6 +28,13 @@ def test_保存はログインしていないと拒否される(client):
     response = client.post('/quiz_data', json={'question': 'テスト投稿'})
     assert response.status_code == 401
     assert response.get_json()['error'] == 'ログインが必要です'
+
+
+def test_ログイン済みでも空のquestionは拒否される(client, auth_headers):
+    """ログインしていても、questionが空文字なら400が返るはず"""
+    response = client.post('/quiz_data', json={'question': ''}, headers=auth_headers)
+    assert response.status_code == 400
+    assert response.get_json()['error'] == 'question is required'
 
 
 def test_authors一覧もログイン不要で成功する(client):

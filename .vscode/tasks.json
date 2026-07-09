@@ -16,9 +16,16 @@
     },
     {
       "label": "開発開始(まとめて実行)",
-      "dependsOn": ["1. configをlocalに切り替え", "2. Flaskを起動"],
+      "dependsOn": [
+        "1. configをlocalに切り替え",
+        "2. Flaskを起動"
+      ],
       "dependsOrder": "sequence",
-      "problemMatcher": []
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
     },
     {
       "label": "本番反映(mainにマージしてpush)",

@@ -4,17 +4,17 @@ param(
 
 function Invoke-Step {
     param([string]$Command)
-    Write-Host "→ $Command" -ForegroundColor Cyan
+    Write-Host "-> $Command" -ForegroundColor Cyan
     Invoke-Expression $Command
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "❌ ここで失敗しました: $Command" -ForegroundColor Red
-        Write-Host "処理を中断します。内容を確認してください(コンフリクトの可能性があります)。" -ForegroundColor Yellow
+        Write-Host "FAILED: $Command" -ForegroundColor Red
+        Write-Host "Stopping. Please check for conflicts." -ForegroundColor Yellow
         exit 1
     }
 }
 
 if ([string]::IsNullOrWhiteSpace($BranchName)) {
-    Write-Host "❌ ブランチ名が指定されていません。" -ForegroundColor Red
+    Write-Host "ERROR: Branch name is required." -ForegroundColor Red
     exit 1
 }
 
@@ -23,8 +23,8 @@ Invoke-Step "git pull origin main"
 Invoke-Step "git merge $BranchName"
 Invoke-Step "npm run prod"
 Invoke-Step "git add ."
-Invoke-Step 'git commit -m "config切り替え(本番用)"'
+Invoke-Step 'git commit -m "switch config to production"'
 Invoke-Step "git push origin main"
 
 Write-Host ""
-Write-Host "✅ 本番反映が完了しました($BranchName → main)" -ForegroundColor Green
+Write-Host "DONE: merged $BranchName into main and pushed." -ForegroundColor Green

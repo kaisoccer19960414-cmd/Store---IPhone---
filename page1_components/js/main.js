@@ -1,8 +1,7 @@
 import { saveToDB, readFromDB, toggleQuizList, initAuthorSelect, loadMoreQuizzes } from './quizUI.js';
-import { initSwipeNavigation } from './swipeNav.js';
+
 
 document.addEventListener('DOMContentLoaded', () => {
-  initSwipeNavigation();
   initAuthorSelect();
 
   document.getElementById('save-btn').addEventListener('click', saveToDB);

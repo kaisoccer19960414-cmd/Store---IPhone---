@@ -16,16 +16,22 @@
     },
     {
       "label": "開発開始(まとめて実行)",
-      "dependsOn": [
-        "1. configをlocalに切り替え",
-        "2. Flaskを起動"
-      ],
+      "dependsOn": ["1. configをlocalに切り替え", "2. Flaskを起動"],
       "dependsOrder": "sequence",
-      "problemMatcher": [],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      }
+      "problemMatcher": []
+    },
+    {
+      "label": "本番反映(mainにマージしてpush)",
+      "type": "shell",
+      "command": "git checkout main && git pull origin main && git merge ${input:branchName} && npm run prod && git add . && git commit -m \"config切り替え(本番用)\" && git push origin main",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "branchName",
+      "type": "promptString",
+      "description": "マージしたい作業ブランチ名を入力してください(例: feature/cleanup)"
     }
   ]
 }

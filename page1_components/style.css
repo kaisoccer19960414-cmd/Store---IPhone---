@@ -23,6 +23,7 @@ button {
     font-size: 16px;
     cursor: pointer;
     margin: 5px 0;
+    border-radius: 8px;
 }
 #output-area {
     min-height: 40px;

@@ -1,0 +1,38 @@
+name: Run Tests
+
+# push(全ブランチ)と、mainへのPull Requestの時に自動実行する
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # 以降のstepは、全部このフォルダを作業場所として実行する
+    defaults:
+      run:
+        working-directory: LocalHost_python
+
+    steps:
+      - name: コードを取得する
+        uses: actions/checkout@v4
+
+      - name: Pythonの実行環境を用意する
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 依存ライブラリをインストールする
+        run: pip install -r requirements.txt
+
+      - name: pytestを実行する
+        env:
+          APP_PASSCODE: ${{ 7392 }}
+          SUPABASE_URL: ${{ https://tekrwutayfleorpfbuhc.supabase.co }}
+          SUPABASE_SERVICE_KEY: ${{ sb_secret_rv1svolzkY-BiMLGhWS2NA_4ywM-xQb }}
+          FLASK_SECRET_KEY: ${{ c83130f697c2af7b3f14f369b0a79091587ad3757c77ef64817dab77caeab446 }}
+          FRONTEND_ORIGIN: ${{ https://store-iphone-portfolio.vercel.app }}
+        run: python -m pytest

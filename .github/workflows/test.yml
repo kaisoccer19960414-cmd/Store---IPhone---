@@ -30,9 +30,9 @@ jobs:
 
       - name: pytestを実行する
         env:
-          APP_PASSCODE: ${{ 7392 }}
-          SUPABASE_URL: ${{ https://tekrwutayfleorpfbuhc.supabase.co }}
-          SUPABASE_SERVICE_KEY: ${{ sb_secret_rv1svolzkY-BiMLGhWS2NA_4ywM-xQb }}
-          FLASK_SECRET_KEY: ${{ c83130f697c2af7b3f14f369b0a79091587ad3757c77ef64817dab77caeab446 }}
-          FRONTEND_ORIGIN: ${{ https://store-iphone-portfolio.vercel.app }}
+          APP_PASSCODE: ${{ secrets.APP_PASSCODE }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FLASK_SECRET_KEY: ${{ secrets.FLASK_SECRET_KEY }}
+          FRONTEND_ORIGIN: ${{ secrets.FRONTEND_ORIGIN }}
         run: python -m pytest

@@ -25,6 +25,12 @@ button {
     margin: 5px 0;
     border-radius: 8px;
 }
+#input-text {
+    display: block;      /* 独立した1行として扱う */
+    width: 90%;
+    margin-bottom: 8px;  /* 下に余白を作る */
+}
+
 #output-area {
     min-height: 40px;
     background: #eee;

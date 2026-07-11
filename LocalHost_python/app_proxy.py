@@ -257,6 +257,35 @@ def delete_quiz(quiz_id):
     )
     return jsonify({'deleted': quiz_id}), 200
 
+@app.route('/prefectures', methods=['GET'])
+def get_all_prefectures():
+    """都道府県データの一覧(認証不要の公開データ。検索・並び替え対応)"""
+    query = request.args.get('q', default='', type=str).strip()
+    sort = request.args.get('sort', default='id', type=str)
+    order = request.args.get('order', default='asc', type=str)
+
+    # sort/orderは直接クエリに使うので、想定外の値が入らないよう許可リストで絞る
+    allowed_sort_columns = {'id', 'name', 'region_block', 'population', 'population_year'}
+    if sort not in allowed_sort_columns:
+        sort = 'id'
+    if order not in ('asc', 'desc'):
+        order = 'asc'
+
+    params = {
+        'select': 'id,name,region_block,population,population_year',
+        'order': f'{sort}.{order}',
+    }
+    if query:
+        escaped_query = query.replace('*', r'\*')
+        params['name'] = f'ilike.*{escaped_query}*'
+
+    res = requests.get(
+        f'{SUPABASE_URL}/rest/v1/prefectures',
+        headers=SUPABASE_HEADERS,
+        params=params
+    )
+    return jsonify(res.json()), res.status_code
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

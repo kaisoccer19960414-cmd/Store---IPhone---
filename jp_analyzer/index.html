@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>都道府県データ分析</title>
+    <link rel="stylesheet" href="components/style.css">
+</head>
+<body>
+
+    <h2>都道府県データ分析</h2>
+
+    <div style="text-align: right; margin-bottom: 15px;">
+        <a href="../index.html" class="nav-back">← トップへ戻る</a>
+    </div>
+
+    <div class="section">
+        <h3>都道府県一覧（2024年人口）</h3>
+        <div class="search-bar">
+            <input type="text" id="pref-search-input" placeholder="都道府県名で検索" autocomplete="off">
+            <button id="pref-search-btn">検索</button>
+            <button id="pref-search-clear-btn">クリア</button>
+        </div>
+        <table id="pref-table">
+            <thead>
+                <tr>
+                    <th data-sort="name">都道府県名</th>
+                    <th data-sort="region_block">地方</th>
+                    <th data-sort="population">人口(千人)</th>
+                    <th data-sort="population_year">年度</th>
+                </tr>
+            </thead>
+            <tbody id="pref-table-body"></tbody>
+        </table>
+        <div id="pref-status"></div>
+    </div>
+
+    <script type="module" src="components/js/main.js"></script>
+</body>
+</html>

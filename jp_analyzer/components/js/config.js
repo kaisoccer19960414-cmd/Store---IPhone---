@@ -1,2 +1,2 @@
-// バックエンド(Flask/Render)の接続先。page1と同じデプロイ先を使う
-export const API_BASE_URL = 'https://store-iphone.onrender.com';
+// page1側の設定(npm run local / npm run prod で切り替え済みのもの)をそのまま使う
+export { API_BASE_URL } from '../../../page1_components/js/config.js';

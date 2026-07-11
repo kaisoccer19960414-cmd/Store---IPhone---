@@ -177,6 +177,12 @@ def require_login(f):
     return wrapper
 
 
+@app.route('/ping', methods=['GET'])
+def ping():
+    """Renderのスリープ解除(ウォームアップ)用。Supabaseへは繋がず即座に200を返す軽量エンドポイント"""
+    return jsonify({'status': 'ok'}), 200
+
+
 @app.route('/quiz_data', methods=['GET'])
 def get_all_quizzes():
     limit = request.args.get('limit', default=20, type=int)

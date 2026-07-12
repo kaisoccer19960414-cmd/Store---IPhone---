@@ -1,8 +1,8 @@
-import { fetchPrefectures } from './prefecturesApi.js';
+import { fetchPrefectureStats } from './prefecturesApi.js';
 
 let currentQuery = '';
-let currentSort = 'id';
-let currentOrder = 'asc';
+let currentSort = 'value';
+let currentOrder = 'desc';
 
 function renderRows(data) {
   const tbody = document.getElementById('pref-table-body');
@@ -10,11 +10,23 @@ function renderRows(data) {
 
   data.forEach(item => {
     const row = document.createElement('tr');
-    ['name', 'region_block', 'population', 'population_year'].forEach(key => {
-      const td = document.createElement('td');
-      td.textContent = item[key] ?? '-';
-      row.appendChild(td);
-    });
+
+    const nameTd = document.createElement('td');
+    nameTd.textContent = item.prefectures?.name ?? '-';
+    row.appendChild(nameTd);
+
+    const regionTd = document.createElement('td');
+    regionTd.textContent = item.prefectures?.region_block ?? '-';
+    row.appendChild(regionTd);
+
+    const valueTd = document.createElement('td');
+    valueTd.textContent = item.value ?? '-';
+    row.appendChild(valueTd);
+
+    const yearTd = document.createElement('td');
+    yearTd.textContent = item.year ?? '-';
+    row.appendChild(yearTd);
+
     tbody.appendChild(row);
   });
 }
@@ -24,7 +36,7 @@ export async function loadPrefectures() {
   status.textContent = '読み込み中...';
 
   try {
-    const data = await fetchPrefectures(currentQuery, currentSort, currentOrder);
+    const data = await fetchPrefectureStats(currentQuery, currentSort, currentOrder);
     renderRows(data);
     status.textContent = data.length === 0
       ? (currentQuery ? `「${currentQuery}」に一致するデータが見つかりませんでした。` : 'データが空です。')
@@ -47,7 +59,6 @@ export function clearSearch() {
   loadPrefectures();
 }
 
-// 見出しクリックで並び替え(同じ列を2回押すと昇順⇄降順)
 export function sortBy(column) {
   if (currentSort === column) {
     currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';

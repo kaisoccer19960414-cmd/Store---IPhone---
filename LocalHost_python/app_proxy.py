@@ -286,6 +286,45 @@ def get_all_prefectures():
     )
     return jsonify(res.json()), res.status_code
 
+@app.route('/prefecture-stats', methods=['GET'])
+def get_prefecture_stats():
+    indicator = request.args.get('indicator', default='population', type=str)
+    year = request.args.get('year', type=int)
+    query = request.args.get('q', default='', type=str).strip()
+    sort = request.args.get('sort', default='value', type=str)
+    order = request.args.get('order', default='desc', type=str)
+
+    if order not in ('asc', 'desc'):
+        order = 'desc'
+
+    # sortが「都道府県側(name/region_block)」か「統計値側(value/year)」かで書き方が変わる
+    if sort == 'name':
+        order_clause = f'prefectures(name).{order}'
+    elif sort == 'region_block':
+        order_clause = f'prefectures(region_block).{order}'
+    elif sort in ('value', 'year'):
+        order_clause = f'{sort}.{order}'
+    else:
+        order_clause = f'value.{order}'
+
+    params = {
+        'select': 'value,year,unit,prefectures!inner(id,name,region_block)',
+        'indicator': f'eq.{indicator}',
+        'order': order_clause,
+    }
+    if year:
+        params['year'] = f'eq.{year}'
+    if query:
+        escaped_query = query.replace('*', r'\*')
+        params['prefectures.name'] = f'ilike.*{escaped_query}*'
+
+    res = requests.get(
+        f'{SUPABASE_URL}/rest/v1/prefecture_stats',
+        headers=SUPABASE_HEADERS,
+        params=params
+    )
+    return jsonify(res.json()), res.status_code
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

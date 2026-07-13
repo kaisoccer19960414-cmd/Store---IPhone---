@@ -1,8 +1,11 @@
-import { fetchPrefectureStats } from './prefecturesApi.js';
+import { fetchPrefectureStats, fetchStatsMeta } from './prefecturesApi.js';
 
 let currentQuery = '';
 let currentSort = 'value';
 let currentOrder = 'desc';
+let currentIndicator = 'population';
+let currentYear = null;
+let statsMeta = [];
 
 function renderRows(data) {
   const tbody = document.getElementById('pref-table-body');
@@ -19,8 +22,13 @@ function renderRows(data) {
     regionTd.textContent = item.prefectures?.region_block ?? '-';
     row.appendChild(regionTd);
 
+    const indicatorTd = document.createElement('td');
+    indicatorTd.textContent = item.indicator ?? '-';
+    row.appendChild(indicatorTd);
+
     const valueTd = document.createElement('td');
-    valueTd.textContent = item.value ?? '-';
+    const unit = item.unit ? ` ${item.unit}` : '';
+    valueTd.textContent = item.value != null ? `${item.value}${unit}` : '-';
     row.appendChild(valueTd);
 
     const yearTd = document.createElement('td');
@@ -36,11 +44,18 @@ export async function loadPrefectures() {
   status.textContent = '読み込み中...';
 
   try {
-    const data = await fetchPrefectureStats(currentQuery, currentSort, currentOrder);
+    const data = await fetchPrefectureStats(currentQuery, currentSort, currentOrder, currentIndicator, currentYear);
     renderRows(data);
-    status.textContent = data.length === 0
-      ? (currentQuery ? `「${currentQuery}」に一致するデータが見つかりませんでした。` : 'データが空です。')
-      : `${data.length} 件を表示中です。`;
+
+    if (data.length === 0) {
+      status.textContent = currentQuery
+        ? `「${currentQuery}」に一致するデータが見つかりませんでした。`
+        : `${currentYear ?? ''}年のデータが見つかりませんでした。`;
+    } else if (currentQuery) {
+      status.textContent = `「${currentQuery}」に関するデータを ${data.length} 件表示中です(全指標・全年度)。`;
+    } else {
+      status.textContent = `${currentYear}年のデータを ${data.length} 件表示中です。`;
+    }
   } catch (err) {
     status.textContent = `データの取得に失敗しました。(${err.message})`;
   }
@@ -59,6 +74,17 @@ export function clearSearch() {
   loadPrefectures();
 }
 
+export function changeYear(year) {
+  currentYear = Number(year);
+  loadPrefectures();
+}
+
+export function changeIndicator(indicator) {
+  currentIndicator = indicator;
+  populateYearOptions(indicator);
+  loadPrefectures();
+}
+
 export function sortBy(column) {
   if (currentSort === column) {
     currentOrder = currentOrder === 'asc' ? 'desc' : 'asc';
@@ -74,4 +100,52 @@ function updateSortIndicators() {
   document.querySelectorAll('th[data-sort]').forEach(th => {
     th.classList.toggle('sorted', th.dataset.sort === currentSort);
   });
+}
+
+function populateYearOptions(indicator) {
+  const yearSelect = document.getElementById('pref-year-select');
+  const meta = statsMeta.find(m => m.indicator === indicator);
+  const years = meta ? meta.years : [];
+
+  yearSelect.innerHTML = '';
+  years.forEach(y => {
+    const opt = document.createElement('option');
+    opt.value = y;
+    opt.textContent = `${y}年`;
+    yearSelect.appendChild(opt);
+  });
+
+  currentYear = years[0] ?? null;
+  if (currentYear != null) {
+    yearSelect.value = currentYear;
+  }
+}
+
+// DBに実際に入っているindicator/yearをここで取得してセレクトを組み立てる。
+// 新しいCSV(新しいindicator)を投入しても、ここは変更不要で自動的に反映される。
+export async function initSelectors() {
+  const indicatorSelect = document.getElementById('pref-indicator-select');
+  const status = document.getElementById('pref-status');
+
+  try {
+    statsMeta = await fetchStatsMeta();
+  } catch (err) {
+    status.textContent = `指標一覧の取得に失敗しました。(${err.message})`;
+    return;
+  }
+
+  indicatorSelect.innerHTML = '';
+  statsMeta.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.indicator;
+    opt.textContent = m.unit ? `${m.indicator}(${m.unit})` : m.indicator;
+    indicatorSelect.appendChild(opt);
+  });
+
+  const defaultMeta = statsMeta.find(m => m.indicator === currentIndicator) ?? statsMeta[0];
+  if (defaultMeta) {
+    currentIndicator = defaultMeta.indicator;
+    indicatorSelect.value = currentIndicator;
+    populateYearOptions(currentIndicator);
+  }
 }

@@ -20,13 +20,16 @@
             <input type="text" id="pref-search-input" placeholder="都道府県名で検索" autocomplete="off">
             <button id="pref-search-btn">検索</button>
             <button id="pref-search-clear-btn">クリア</button>
+            <select id="pref-indicator-select"></select>
+            <select id="pref-year-select"></select>
         </div>
         <table id="pref-table">
             <thead>
                 <tr>
                     <th data-sort="name">都道府県名</th>
                     <th data-sort="region_block">地方</th>
-                    <th data-sort="value">人口(千人)</th>
+                    <th data-sort="indicator">指標</th>
+                    <th data-sort="value">値</th>
                     <th data-sort="year">年度</th>
                 </tr>
             </thead>

@@ -288,7 +288,7 @@ def get_all_prefectures():
 
 @app.route('/prefecture-stats', methods=['GET'])
 def get_prefecture_stats():
-    indicator = request.args.get('indicator', default='population', type=str)
+    indicator = request.args.get('indicator', default='', type=str).strip()
     year = request.args.get('year', type=int)
     query = request.args.get('q', default='', type=str).strip()
     sort = request.args.get('sort', default='value', type=str)
@@ -297,21 +297,28 @@ def get_prefecture_stats():
     if order not in ('asc', 'desc'):
         order = 'desc'
 
-    # sortが「都道府県側(name/region_block)」か「統計値側(value/year)」かで書き方が変わる
+    # 検索中(都道府県名で絞り込み中)は、指標・年度の絞り込みを外して
+    # その都道府県に紐づくデータを全部(全指標・全年度)返す
+    if query:
+        indicator = ''
+        year = None
+
+    # sortが「都道府県側(name/region_block)」か「統計値側(value/year/indicator)」かで書き方が変わる
     if sort == 'name':
         order_clause = f'prefectures(name).{order}'
     elif sort == 'region_block':
         order_clause = f'prefectures(region_block).{order}'
-    elif sort in ('value', 'year'):
+    elif sort in ('value', 'year', 'indicator'):
         order_clause = f'{sort}.{order}'
     else:
         order_clause = f'value.{order}'
 
     params = {
-        'select': 'value,year,unit,prefectures!inner(id,name,region_block)',
-        'indicator': f'eq.{indicator}',
+        'select': 'indicator,value,year,unit,prefectures!inner(id,name,region_block)',
         'order': order_clause,
     }
+    if indicator:
+        params['indicator'] = f'eq.{indicator}'
     if year:
         params['year'] = f'eq.{year}'
     if query:
@@ -324,6 +331,30 @@ def get_prefecture_stats():
         params=params
     )
     return jsonify(res.json()), res.status_code
+
+
+@app.route('/stats-meta', methods=['GET'])
+def get_stats_meta():
+    """登録済みのindicator一覧と、それぞれで使える年度一覧を返す。
+    フロント側の指標・年度セレクトをここから動的に組み立てることで、
+    新しいCSV(新しいindicator)を投入してもコードを書き直さずに済むようにする。
+    (テーブルが大きくなってきたらDB側でDISTINCTを取るビュー/RPCに切り替える)"""
+    res = requests.get(
+        f'{SUPABASE_URL}/rest/v1/prefecture_stats',
+        headers=SUPABASE_HEADERS,
+        params={'select': 'indicator,year,unit', 'order': 'indicator.asc,year.desc'}
+    )
+    if res.status_code != 200:
+        return jsonify(res.json()), res.status_code
+
+    meta = {}
+    for row in res.json():
+        indicator = row['indicator']
+        entry = meta.setdefault(indicator, {'indicator': indicator, 'unit': row.get('unit'), 'years': []})
+        if row['year'] not in entry['years']:
+            entry['years'].append(row['year'])
+
+    return jsonify(list(meta.values())), 200
 
 
 if __name__ == '__main__':

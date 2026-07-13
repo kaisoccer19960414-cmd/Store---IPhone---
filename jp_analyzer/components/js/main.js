@@ -1,6 +1,7 @@
-import { loadPrefectures, searchPrefectures, clearSearch, sortBy } from './prefecturesUI.js';
+import { loadPrefectures, searchPrefectures, clearSearch, sortBy, changeYear, changeIndicator, initSelectors } from './prefecturesUI.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await initSelectors();
   loadPrefectures();
 
   document.getElementById('pref-search-btn').addEventListener('click', searchPrefectures);
@@ -10,6 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       searchPrefectures();
     }
+  });
+  document.getElementById('pref-year-select').addEventListener('change', (e) => {
+    changeYear(e.target.value);
+  });
+  document.getElementById('pref-indicator-select').addEventListener('change', (e) => {
+    changeIndicator(e.target.value);
   });
 
   document.querySelectorAll('th[data-sort]').forEach(th => {

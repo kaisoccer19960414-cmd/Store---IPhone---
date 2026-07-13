@@ -18,17 +18,49 @@ SUPABASE_HEADERS = {
     'Content-Type': 'application/json',
 }
 
-YEAR_PATTERN = re.compile(r'^\d{4}年$')  # "2024年"のような列名を自動検出する
+YEAR_PATTERN = re.compile(r'^\d{4}年$')
+
+
+def load_csv(csv_path, skiprows):
+    df = pd.read_csv(csv_path, encoding='cp932', skiprows=skiprows)
+
+    # Excel経由の破損などで「�」(置き換え文字)が混ざっていないかチェックする
+    sample = ''.join(str(c) for c in df.columns) + ''.join(df.head(20).astype(str).values.flatten())
+    if '\ufffd' in sample:
+        raise SystemExit(
+            '警告: ファイルの中に文字化け(�)が含まれています。\n'
+            'CSVがExcel等で一度開かれて壊れた可能性が高いです。e-Statから再ダウンロードしてください。'
+        )
+    return df
+
+
+def inspect(df):
+    """絞り込みに使えそうな列(「〇〇 コード」列)と、対応するラベルを自動で洗い出して表示する"""
+    year_columns = [c for c in df.columns if YEAR_PATTERN.match(str(c).strip())]
+    print(f'=== 検出した年度列 ===\n{year_columns}\n')
+
+    print('=== 絞り込みに使えそうな列(--filter の候補) ===')
+    for col in df.columns:
+        if not col.endswith(' コード'):
+            continue
+        label_col = col.replace(' コード', '')
+        if label_col not in df.columns:
+            continue
+        pairs = df[[col, label_col]].drop_duplicates().values.tolist()
+        print(f'\n{col}:')
+        for code, label in pairs[:15]:
+            print(f'  {code} -> {label}')
+        if len(pairs) > 15:
+            print(f'  ...ほか{len(pairs) - 15}件')
 
 
 def parse_filters(filter_args):
-    """--filter '男女別 コード=0' のような文字列を {列名: 値} の辞書に変換する"""
     filters = {}
     for f in filter_args or []:
         col, _, value = f.partition('=')
         col, value = col.strip(), value.strip()
         if value.lstrip('-').isdigit():
-            value = int(value)  # CSVのコード列は大体int64で読まれるので合わせる
+            value = int(value)
         filters[col] = value
     return filters
 
@@ -45,18 +77,26 @@ def fetch_prefecture_ids():
 
 def main():
     parser = argparse.ArgumentParser(description='e-StatのCSVをprefecture_statsテーブルに取り込む汎用スクリプト')
-    parser.add_argument('--csv', required=True, help='jp_analyzer/data/ からの相対ファイル名')
+    parser.add_argument('--csv', required=True)
     parser.add_argument('--skiprows', type=int, default=11)
-    parser.add_argument('--indicator', required=True, help='指標名(例: population, area)')
-    parser.add_argument('--unit', default=None, help='単位(例: 千人, km2)')
-    parser.add_argument('--source', required=True, help='出典メモ(例: "e-Stat 0004021102")')
+    parser.add_argument('--indicator')
+    parser.add_argument('--unit', default=None)
+    parser.add_argument('--source')
     parser.add_argument('--pref-column', default='全国・都道府県')
-    parser.add_argument('--filter', action='append', help='"列名=値" の形で絞り込み条件を複数指定可能')
-    parser.add_argument('--dry-run', action='store_true', help='投入せず変換結果の確認だけ行う')
+    parser.add_argument('--filter', action='append')
+    parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument('--inspect', action='store_true', help='絞り込み条件を考える前に、列の中身を確認するモード')
     args = parser.parse_args()
 
     csv_path = ROOT_DIR / 'jp_analyzer' / 'data' / args.csv
-    df = pd.read_csv(csv_path, encoding='cp932', skiprows=args.skiprows)
+    df = load_csv(csv_path, args.skiprows)
+
+    if args.inspect:
+        inspect(df)
+        return
+
+    if not args.indicator or not args.source:
+        raise SystemExit('--indicator と --source は必須です(先に --inspect で中身を確認してください)')
 
     for col, value in parse_filters(args.filter).items():
         df = df[df[col] == value]
@@ -64,7 +104,7 @@ def main():
 
     year_columns = [c for c in df.columns if YEAR_PATTERN.match(str(c).strip())]
     if not year_columns:
-        raise SystemExit('年度の列(例:"2024年")が見つかりません。--filterや列名を確認してください。')
+        raise SystemExit('年度の列が見つかりません。--filterや列名を確認してください。')
     print(f'検出した年度列: {year_columns}')
 
     prefecture_ids = fetch_prefecture_ids()

@@ -18,14 +18,38 @@ SUPABASE_HEADERS = {
     'Content-Type': 'application/json',
 }
 
-YEAR_PATTERN = re.compile(r'^\d{4}年$')
+YEAR_PATTERN = re.compile(r'^(\d{4})年$')
+# 「1995年10月〜1996年9月」のような期間形式の列。波ダッシュの表記ゆれ(〜/～/~)に対応
+YEAR_RANGE_PATTERN = re.compile(r'^(\d{4})年\d{1,2}月[〜～~](\d{4})年\d{1,2}月$')
+
+
+def extract_year_columns(df):
+    """年度を表す列を検出し、(列の位置インデックス, 年) のリストを返す。
+    「YYYY年」の単純な形式と、「YYYY年M月〜YYYY年M月」のような期間形式の両方に対応する。
+    期間形式は終了年を代表年として扱う(例: 1995年10月〜1996年9月 → 1996年としてDBに保存)。
+    列名ではなく位置で返すのは、e-StatのCSVでは同じ期間の列名が複数回出てくることがあり、
+    列名だけで参照すると意図しない列と混同する恐れがあるため。"""
+    year_columns = []
+    for idx, col in enumerate(df.columns):
+        col_str = str(col).strip()
+        m = YEAR_PATTERN.match(col_str)
+        if m:
+            year_columns.append((idx, int(m.group(1))))
+            continue
+        m = YEAR_RANGE_PATTERN.match(col_str)
+        if m:
+            year_columns.append((idx, int(m.group(2))))
+    return year_columns
 
 
 def load_csv(csv_path, skiprows):
     df = pd.read_csv(csv_path, encoding='cp932', skiprows=skiprows)
 
     # Excel経由の破損などで「�」(置き換え文字)が混ざっていないかチェックする
-    sample = ''.join(str(c) for c in df.columns) + ''.join(df.head(20).astype(str).values.flatten())
+    sample_parts = [str(c) for c in df.columns]
+    for row in df.head(20).itertuples(index=False):
+        sample_parts.extend(str(v) for v in row)
+    sample = ''.join(sample_parts)
     if '\ufffd' in sample:
         raise SystemExit(
             '警告: ファイルの中に文字化け(�)が含まれています。\n'
@@ -36,8 +60,11 @@ def load_csv(csv_path, skiprows):
 
 def inspect(df):
     """絞り込みに使えそうな列(「〇〇 コード」列)と、対応するラベルを自動で洗い出して表示する"""
-    year_columns = [c for c in df.columns if YEAR_PATTERN.match(str(c).strip())]
-    print(f'=== 検出した年度列 ===\n{year_columns}\n')
+    year_columns = extract_year_columns(df)
+    print('=== 検出した年度列 ===')
+    for idx, year in year_columns:
+        print(f'  {df.columns[idx]!r} (列位置 {idx}) -> {year}年として扱います')
+    print()
 
     print('=== 絞り込みに使えそうな列(--filter の候補) ===')
     for col in df.columns:
@@ -86,6 +113,8 @@ def main():
     parser.add_argument('--filter', action='append')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--inspect', action='store_true', help='絞り込み条件を考える前に、列の中身を確認するモード')
+    parser.add_argument('--allow-duplicate-years', action='store_true',
+                         help='同じ年に対応する列が複数あっても止めずに投入する(後勝ちで上書きされる)')
     args = parser.parse_args()
 
     csv_path = ROOT_DIR / 'jp_analyzer' / 'data' / args.csv
@@ -102,10 +131,31 @@ def main():
         df = df[df[col] == value]
     df = df[df[args.pref_column] != '全国']
 
-    year_columns = [c for c in df.columns if YEAR_PATTERN.match(str(c).strip())]
+    year_columns = extract_year_columns(df)
     if not year_columns:
         raise SystemExit('年度の列が見つかりません。--filterや列名を確認してください。')
-    print(f'検出した年度列: {year_columns}')
+    print(f'検出した年度列: {[(df.columns[idx], year) for idx, year in year_columns]}')
+
+    # 同じ年が複数回検出された場合、列名が同じでも実際は違う意味のデータ
+    # (男女別・自然増減/社会増減など)が混ざっている可能性が高い。
+    # (prefecture_id, indicator, year)でUPSERTする都合上、片方が
+    # サイレントに上書きされてしまうため、ここで止めて確認を促す。
+    seen_years = {}
+    for idx, year in year_columns:
+        seen_years.setdefault(year, []).append(idx)
+    duplicated = {y: idxs for y, idxs in seen_years.items() if len(idxs) > 1}
+    if duplicated and not args.allow_duplicate_years:
+        print('\n警告: 同じ年に対応する列が複数見つかりました。')
+        for year, idxs in duplicated.items():
+            cols = [df.columns[i] for i in idxs]
+            print(f'  {year}年: {cols} (列位置 {idxs})')
+        raise SystemExit(
+            '列名が同じでも、実際は違う意味のデータ(男女別・自然増減/社会増減など)が\n'
+            '混ざっている可能性があります。--filter で対象を1つに絞り込んでください\n'
+            '(--inspect で「--filter の候補」を確認できます)。\n'
+            '意図的に両方まとめて投入したい場合は --allow-duplicate-years を付けてください\n'
+            '(この場合、後勝ちで上書きされる点に注意)。'
+        )
 
     prefecture_ids = fetch_prefecture_ids()
     rows = []
@@ -115,14 +165,14 @@ def main():
         if pref_id is None:
             print(f'警告: {name} が見つかりません。スキップします。')
             continue
-        for year_col in year_columns:
-            value_str = str(row[year_col]).replace(',', '').strip()
+        for idx, year in year_columns:
+            value_str = str(row.iloc[idx]).replace(',', '').strip()
             if value_str in ('', 'nan', '-', '***'):
                 continue
             rows.append({
                 'prefecture_id': pref_id,
                 'indicator': args.indicator,
-                'year': int(year_col.replace('年', '')),
+                'year': year,
                 'value': float(value_str),
                 'unit': args.unit,
                 'source': args.source,

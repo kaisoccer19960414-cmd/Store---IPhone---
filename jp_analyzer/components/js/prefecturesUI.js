@@ -61,10 +61,10 @@ export async function loadPrefectures() {
 
     if (data.length === 0) {
       status.textContent = currentQuery
-        ? `「${currentQuery}」に一致するデータが見つかりませんでした。`
+        ? `「${currentQuery}」の${indicatorLabel(currentIndicator)}データが見つかりませんでした。`
         : `${currentYear ?? ''}年のデータが見つかりませんでした。`;
     } else if (currentQuery) {
-      status.textContent = `「${currentQuery}」に関するデータを ${data.length} 件表示中です(全指標・全年度)。`;
+      status.textContent = `「${currentQuery}」の${indicatorLabel(currentIndicator)}データを ${data.length} 件表示中です(全年度)。`;
     } else {
       status.textContent = `${currentYear}年のデータを ${data.length} 件表示中です。`;
     }

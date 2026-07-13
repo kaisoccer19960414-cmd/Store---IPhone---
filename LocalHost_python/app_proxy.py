@@ -297,10 +297,9 @@ def get_prefecture_stats():
     if order not in ('asc', 'desc'):
         order = 'desc'
 
-    # 検索中(都道府県名で絞り込み中)は、指標・年度の絞り込みを外して
-    # その都道府県に紐づくデータを全部(全指標・全年度)返す
+    # 検索中(都道府県名で絞り込み中)は年度の絞り込みだけ外して、選ばれてる指標の
+    # 全年度分を見せる。指標そのものはちゃんと守る(人口と人口増減率が混ざらないように)
     if query:
-        indicator = ''
         year = None
 
     # sortが「都道府県側(name/region_block)」か「統計値側(value/year/indicator)」かで書き方が変わる

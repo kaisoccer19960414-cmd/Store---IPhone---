@@ -1,9 +1,16 @@
 import { fetchPrefectureStats, fetchStatsMeta } from './prefecturesApi.js';
 
+// 指標コード(DB上のindicator値)→表示用の日本語ラベル。
+// 新しい指標を投入したときは、ここに1行足すだけで表示に反映される
+// (登録し忘れてもコードがそのまま表示されるだけで壊れはしない)。
 const INDICATOR_LABELS = {
   population: '人口',
   population_change_rate: '人口増減率',
 };
+
+function indicatorLabel(code) {
+  return INDICATOR_LABELS[code] ?? code;
+}
 
 let currentQuery = '';
 let currentSort = 'value';
@@ -28,7 +35,7 @@ function renderRows(data) {
     row.appendChild(regionTd);
 
     const indicatorTd = document.createElement('td');
-    indicatorTd.textContent = item.indicator ?? '-';
+    indicatorTd.textContent = item.indicator ? indicatorLabel(item.indicator) : '-';
     row.appendChild(indicatorTd);
 
     const valueTd = document.createElement('td');
@@ -143,7 +150,7 @@ export async function initSelectors() {
   statsMeta.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.indicator;
-    opt.textContent = m.unit ? `${m.indicator}(${m.unit})` : m.indicator;
+    opt.textContent = m.unit ? `${indicatorLabel(m.indicator)}(${m.unit})` : indicatorLabel(m.indicator);
     indicatorSelect.appendChild(opt);
   });
 

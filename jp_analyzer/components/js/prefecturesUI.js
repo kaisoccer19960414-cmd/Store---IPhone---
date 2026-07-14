@@ -9,6 +9,7 @@ const INDICATOR_LABELS = {
   births: '出生数',
   deaths: '死亡数',
   natural_change: '自然増減数',
+  social_change: '社会増減数(近似値)',
 };
 
 function indicatorLabel(code) {

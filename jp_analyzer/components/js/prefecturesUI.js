@@ -13,8 +13,8 @@ function indicatorLabel(code) {
 }
 
 let currentQuery = '';
-let currentSort = 'value';
-let currentOrder = 'desc';
+let currentSort = 'year';
+let currentOrder = 'asc';
 let currentIndicator = 'population';
 let currentYear = null;
 let statsMeta = [];
@@ -54,6 +54,7 @@ function renderRows(data) {
 export async function loadPrefectures() {
   const status = document.getElementById('pref-status');
   status.textContent = '読み込み中...';
+  updateSortIndicators();
 
   try {
     const data = await fetchPrefectureStats(currentQuery, currentSort, currentOrder, currentIndicator, currentYear);
@@ -110,7 +111,10 @@ export function sortBy(column) {
 
 function updateSortIndicators() {
   document.querySelectorAll('th[data-sort]').forEach(th => {
-    th.classList.toggle('sorted', th.dataset.sort === currentSort);
+    const isSorted = th.dataset.sort === currentSort;
+    th.classList.toggle('sorted', isSorted);
+    th.classList.toggle('sort-asc', isSorted && currentOrder === 'asc');
+    th.classList.toggle('sort-desc', isSorted && currentOrder === 'desc');
   });
 }
 

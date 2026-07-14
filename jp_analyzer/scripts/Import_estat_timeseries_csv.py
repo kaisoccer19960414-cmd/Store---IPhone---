@@ -44,6 +44,7 @@ def main():
     parser.add_argument('--source', help='--inspect以外では必須')
     parser.add_argument('--pref-column', default='地域')
     parser.add_argument('--time-column', default='時点')
+    parser.add_argument('--year', type=int, help='この年だけに絞り込む(指定しなければ全年計行を対象にする)')
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--inspect', action='store_true', help='列名・年計行の検出状況だけ確認するモード')
     args = parser.parse_args()
@@ -77,6 +78,8 @@ def main():
         if not m:
             continue  # 月次の行はスキップし、年計行だけを使う
         year = int(m.group(1))
+        if args.year is not None and year != args.year:
+            continue
 
         name = row[args.pref_column]
         if name == '全国':

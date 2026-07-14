@@ -6,6 +6,7 @@ import { fetchPrefectureStats, fetchStatsMeta } from './prefecturesApi.js';
 const INDICATOR_LABELS = {
   population: '人口',
   population_change_rate: '人口増減率',
+  births: '出生数',
 };
 
 function indicatorLabel(code) {

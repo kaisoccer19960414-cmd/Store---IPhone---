@@ -8,6 +8,7 @@ const INDICATOR_LABELS = {
   population_change_rate: '人口増減率',
   births: '出生数',
   deaths: '死亡数',
+  natural_change: '自然増減数',
 };
 
 function indicatorLabel(code) {

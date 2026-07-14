@@ -68,10 +68,10 @@ th.sort-desc::after {
     font-size: 0.8em;
 }
 #pref-table-body td:nth-child(4) {
-    color: #1b8121;
+    color: #0b470f;
 }
 #pref-table-body td:nth-child(5) {
-    color: #0f4f99;
+    color: #094385;
 }
 .nav-back {
     display: inline-block;

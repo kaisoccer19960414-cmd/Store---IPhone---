@@ -67,6 +67,12 @@ th.sort-desc::after {
     content: ' \25BC';
     font-size: 0.8em;
 }
+#pref-table-body td:nth-child(4) {
+    color: #2e7d32;
+}
+#pref-table-body td:nth-child(5) {
+    color: #1565c0;
+}
 .nav-back {
     display: inline-block;
     padding: 8px 16px;

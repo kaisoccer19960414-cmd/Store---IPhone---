@@ -1,3 +1,6 @@
+#ローカルホスト専用コード　普段使ってない
+#テスト用
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import sqlite3

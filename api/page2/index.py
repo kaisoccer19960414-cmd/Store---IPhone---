@@ -27,7 +27,7 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 class SummaryRequest(BaseModel):
     target_date: str
 
-@app.post("/api/summarize")
+@app.post("/api/page2/summarize")
 async def summarize_lessons(request: SummaryRequest):
     target_date = request.target_date.strip()
     if not target_date:

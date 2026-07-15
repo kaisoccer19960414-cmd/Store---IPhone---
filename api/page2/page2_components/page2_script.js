@@ -231,7 +231,7 @@ async function generateSummaryNow() {
     try {
         // 💡 Vercel上の自分自身のPython API（/api/summarize）を呼び出す
         // 相対パスで指定することで、本番環境でもそのまま動きます
-        const response = await fetch('/api/summarize', {
+        const response =await fetch('/api/page2/summarize', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

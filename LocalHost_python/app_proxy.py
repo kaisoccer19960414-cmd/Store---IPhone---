@@ -62,7 +62,7 @@ LOCAL_TEST_ORIGINS = [
     'http://127.0.0.1:5501',
     'http://localhost:5501',
 ]
-CORS(app, origins=[PREVIEW_ORIGIN_PATTERN, *LOCAL_TEST_ORIGINS])
+CORS(app, origins=[PREVIEW_ORIGIN_PATTERN, *LOCAL_TEST_ORIGINS], max_age=3600)
 
 APP_PASSCODE = os.environ.get('APP_PASSCODE')
 SUPABASE_URL = os.environ.get('SUPABASE_URL')

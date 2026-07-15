@@ -16,6 +16,16 @@ function indicatorLabel(code) {
   return INDICATOR_LABELS[code] ?? code;
 }
 
+// 指標ごとの補足注記。該当する指標が選ばれてるときだけ画面下に表示される。
+const INDICATOR_NOTES = {
+  social_change: '※国勢調査の年(1995・2000・2005・2010・2015・2020・2025年)は、'
+    + '人口の集計方法が実地調査に切り替わり差分計算が大きく歪むため、参考値を掲載していません。',
+};
+
+function indicatorNote(code) {
+  return INDICATOR_NOTES[code] ?? '';
+}
+
 let currentQuery = '';
 let currentSort = 'year';
 let currentOrder = 'asc';
@@ -57,7 +67,9 @@ function renderRows(data) {
 
 export async function loadPrefectures() {
   const status = document.getElementById('pref-status');
+  const note = document.getElementById('pref-note');
   status.textContent = '読み込み中...';
+  note.textContent = indicatorNote(currentIndicator);
   updateSortIndicators();
 
   try {

@@ -56,6 +56,15 @@ def main():
         '--source',
         default='calculated: (population year-over-year change) - natural_change (近似値)'
     )
+    parser.add_argument(
+        '--skip-census-years', action='store_true', default=True,
+        help='国勢調査の年(西暦が5で割り切れる年)は、populationが実地調査に切り替わりnatural_changeとの'
+             '差分計算が大きく歪むため、デフォルトでスキップする'
+    )
+    parser.add_argument(
+        '--include-census-years', action='store_false', dest='skip_census_years',
+        help='--skip-census-yearsを無効化し、国勢調査の年も計算対象に含める'
+    )
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args()
 
@@ -71,7 +80,11 @@ def main():
 
     rows = []
     skipped_no_prev_population = 0
+    skipped_census_year = 0
     for (pref_id, year), nc_value in natural_change.items():
+        if args.skip_census_years and year % 5 == 0:
+            skipped_census_year += 1
+            continue
         prev_year = year - 1
         pref_population = population.get(pref_id, {})
         if year not in pref_population or prev_year not in pref_population:
@@ -91,7 +104,8 @@ def main():
         })
 
     print(f'{len(rows)} 件を計算しました'
-          f'(前年/当年のpopulationが無く計算できなかった件数: {skipped_no_prev_population})')
+          f'(前年/当年のpopulationが無く計算できなかった件数: {skipped_no_prev_population}、'
+          f'国勢調査の年としてスキップした件数: {skipped_census_year})')
 
     if args.dry_run:
         rows.sort(key=lambda r: (r['prefecture_id'], r['year']))

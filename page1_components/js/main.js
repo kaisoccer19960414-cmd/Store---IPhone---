@@ -15,3 +15,23 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('fetch-all-btn').addEventListener('click', toggleQuizList);
   document.getElementById('load-more-btn')?.addEventListener('click', loadMoreQuizzes);
 });
+
+
+
+async function loadPingStats() {
+    try {
+        const res = await fetch('https://store-iphone.onrender.com/ping-stats');
+        const data = await res.json();
+        const el = document.getElementById('ping-status');
+        if (data.last_ping_at) {
+            const date = new Date(data.last_ping_at);
+            const formatted = date.toLocaleString('ja-JP');
+            el.innerText = `🟢 最終ping: ${formatted}（累計${data.total_count}回）`;
+        } else {
+            el.innerText = 'まだpingが記録されていません';
+        }
+    } catch (e) {
+        document.getElementById('ping-status').innerText = '取得失敗';
+    }
+}
+window.addEventListener('load', loadPingStats);

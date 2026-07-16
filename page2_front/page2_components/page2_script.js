@@ -42,6 +42,16 @@ async function checkAuth() {
     return true; 
 }
 
+function showToast(message, duration = 500) {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.style.display = 'block';
+
+    setTimeout(() => {
+        toast.style.display = 'none';
+    }, duration);
+}
+
 // ページを開いたときの初期処理
 window.onload = async function() {
     const isLoggedIn = await checkAuth();
@@ -89,7 +99,7 @@ async function saveToDB() {
     });
 
     if (response.ok) {
-        alert('クラウドDBへ保存しました！');
+        showToast('クラウドDBへ保存しました！');
         document.getElementById('input-content').value = ''; 
         
         if (dateValue === document.getElementById('search-date').value) {
@@ -207,7 +217,7 @@ async function deleteNote(id) {
     });
 
     if (response.ok) {
-        alert('削除しました！');
+        showToast('削除しました！');
         fetchLessonNotesByDate();
     } else {
         alert('削除に失敗しました。');

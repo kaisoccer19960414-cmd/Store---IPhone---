@@ -179,36 +179,7 @@ def require_login(f):
 
 @app.route('/ping', methods=['GET'])
 def ping():
-    try:
-        requests.post(
-            f'{SUPABASE_URL}/rest/v1/ping_logs',
-            headers=SUPABASE_HEADERS,
-            json={}
-        )
-    except Exception as e:
-        print(f"ping log failed: {e}")
     return jsonify({'status': 'ok'}), 200
-
-
-@app.route('/ping-stats', methods=['GET'])
-def ping_stats():
-    count_res = requests.get(
-        f'{SUPABASE_URL}/rest/v1/ping_logs',
-        headers={**SUPABASE_HEADERS, 'Prefer': 'count=exact'},
-        params={'select': 'id'}
-    )
-    latest_res = requests.get(
-        f'{SUPABASE_URL}/rest/v1/ping_logs',
-        headers=SUPABASE_HEADERS,
-        params={'select': 'pinged_at', 'order': 'id.desc', 'limit': 1}
-    )
-    total_count = int(count_res.headers.get('content-range', '0').split('/')[-1])
-    latest_data = latest_res.json()
-    return jsonify({
-        'total_count': total_count,
-        'last_ping_at': latest_data[0]['pinged_at'] if latest_data else None
-    }), 200
-
 
 @app.route('/quiz_data', methods=['GET'])
 def get_all_quizzes():

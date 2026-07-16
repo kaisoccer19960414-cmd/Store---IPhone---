@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadPingStats() {
     try {
-        const res = await fetch('https://store-iphone.onrender.com/ping-stats');
+        const res = await fetch('https://store-iphone-1.onrender.com/ping-stats');
         const data = await res.json();
         const el = document.getElementById('ping-status');
         if (data.last_ping_at) {

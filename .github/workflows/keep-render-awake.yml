@@ -10,4 +10,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Render
-        run: curl -f https://store-iphone.onrender.com/ping
+        run: curl -f https://store-iphone-1.onrender.com/ping

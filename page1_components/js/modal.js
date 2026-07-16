@@ -223,3 +223,28 @@ export function showPrompt(message, defaultValue = '', inputType = 'text') {
     });
   });
 }
+
+
+// 自動で閉じる軽い通知(保存成功など、読んだらすぐ消えて困らないメッセージ向け)
+export function showToast(message, duration = 500) {
+  injectStylesOnce();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'app-modal-overlay';
+
+  const box = document.createElement('div');
+  box.className = 'app-modal-box';
+
+  const messageEl = document.createElement('p');
+  messageEl.className = 'app-modal-message';
+  messageEl.style.margin = '0'; // ボタンがない分、余白を詰める
+  messageEl.textContent = message;
+  box.appendChild(messageEl);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  setTimeout(() => {
+    overlay.remove();
+  }, duration);
+}

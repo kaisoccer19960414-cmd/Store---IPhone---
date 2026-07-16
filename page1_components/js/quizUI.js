@@ -1,5 +1,5 @@
 import { createQuiz, fetchLatestQuiz, fetchAllQuizzes, deleteQuiz, updateQuiz, fetchAuthors } from './quizApi.js';
-import { showAlert, showConfirm, showPrompt } from './modal.js';
+import { showAlert, showConfirm, showPrompt, showToast } from './modal.js';
 
 // DBから返ってくる日時文字列(ISO形式)を、見やすい日本語表記に変換する
 function formatDateTime(isoString) {
@@ -52,7 +52,7 @@ export async function saveToDB() {
     return;
   }
 
-  await showAlert('クラウドDBへの保存に成功しました！');
+  await showToast('クラウドDBへの保存に成功しました！');
   input.value = '';
   renderAllQuizzes(true, true); // 一覧の裏側での再取得は、ローディング表示を出さず静かに、最初から表示し直す
 }
@@ -83,7 +83,7 @@ async function handleEdit(id, currentText) {
     return;
   }
 
-  await showAlert('更新しました！');
+  await showToast('更新しました！');
   renderAllQuizzes(true, true);
 }
 
@@ -98,7 +98,7 @@ async function handleDelete(id) {
     return;
   }
 
-  await showAlert('削除しました！');
+  await showToast('削除しました！');
   renderAllQuizzes(true, true);
 }
 

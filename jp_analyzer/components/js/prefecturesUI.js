@@ -183,3 +183,10 @@ export async function initSelectors() {
     populateYearOptions(currentIndicator);
   }
 }
+
+// ページを開いた直後は、テーブルを自動表示せず案内メッセージだけ出す。
+// 都道府県名で検索するか、指標・年度を選び直すと、そこで初めてloadPrefecturesが呼ばれる。
+export function showInitialPrompt() {
+  const status = document.getElementById('pref-status');
+  status.textContent = '都道府県名で検索するか、上の指標・年度を選び直してください。';
+}

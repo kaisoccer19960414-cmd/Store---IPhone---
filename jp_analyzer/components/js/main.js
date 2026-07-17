@@ -1,8 +1,8 @@
-import { loadPrefectures, searchPrefectures, clearSearch, sortBy, changeYear, changeIndicator, initSelectors } from './prefecturesUI.js';
+import { loadPrefectures, searchPrefectures, clearSearch, sortBy, changeYear, changeIndicator, initSelectors,showInitialPrompt } from './prefecturesUI.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   await initSelectors();
-  loadPrefectures();
+  showInitialPrompt();
 
   document.getElementById('pref-search-btn').addEventListener('click', searchPrefectures);
   document.getElementById('pref-search-clear-btn').addEventListener('click', clearSearch);

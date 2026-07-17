@@ -16,7 +16,7 @@ export async function initAuthorSelect() {
   const select = document.getElementById('author-select');
   if (!select) return; // HTML側にまだ用意していなければ何もしない
 
-  const { data, error } = await fetchAuthors();
+  const { data, error } = await fetchAuthors(true);
   if (error || !data) return;
 
   // 「指定なし」の選択肢を先頭に用意しておく

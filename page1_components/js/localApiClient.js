@@ -2,6 +2,8 @@ import { API_BASE_URL } from './config.js';
 import { getToken, setToken } from './authClient.js';
 import { showAlert, showPrompt, showLoading, hideLoading } from './modal.js';
 
+let hasWarmedUp = false;
+
 async function loginWithPrompt() {
   const passcode = await showPrompt('管理者パスコードを入力してください', '', 'password');
   if (passcode === null) return null;
@@ -32,10 +34,12 @@ export async function localApiRequest(path, options = {}) {
   // silent: true にすると、ローディング表示を出さずに裏で静かに通信する
   const { silent = false, ...fetchOptions } = options;
 
+  const shouldShowLoading = !silent && !hasWarmedUp;
+
   try {
     let token = getToken();
 
-    if (!silent) {
+    if (shouldShowLoading) {
       showLoading('サーバーと通信中...\n(初回はRenderの起動に時間がかかることがあります)');
     }
 
@@ -50,7 +54,8 @@ export async function localApiRequest(path, options = {}) {
         }
       });
     } finally {
-      if (!silent) hideLoading();
+      if (shouldShowLoading) hideLoading();
+      hasWarmedUp = true;
     }
 
     if (response.status === 401) {
@@ -59,8 +64,7 @@ export async function localApiRequest(path, options = {}) {
         return { data: null, error: 'ログインがキャンセルされました' };
       }
 
-      if (!silent) showLoading('サーバーと通信中...');
-      try {
+      
         response = await fetch(`${API_BASE_URL}/${path}`, {
           ...fetchOptions,
           headers: {
@@ -69,10 +73,7 @@ export async function localApiRequest(path, options = {}) {
             ...fetchOptions.headers
           }
         });
-      } finally {
-        if (!silent) hideLoading();
-      }
-    }
+       }
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => null);
@@ -84,7 +85,7 @@ export async function localApiRequest(path, options = {}) {
     return { data, error: null };
 
   } catch (err) {
-    if (!silent) hideLoading();
+    if (shouldShowLoading) hideLoading();
     console.error('ローカルAPI通信エラー:', err);
     return { data: null, error: err.message };
   }

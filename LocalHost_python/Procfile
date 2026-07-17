@@ -1,1 +1,1 @@
-web: gunicorn app_proxy:app --workers=2 --threads=2
+web: gunicorn app_proxy:app --workers=1 --threads=2

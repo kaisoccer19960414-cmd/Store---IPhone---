@@ -1,6 +1,9 @@
 import { createQuiz, fetchLatestQuiz, fetchAllQuizzes, deleteQuiz, updateQuiz, fetchAuthors } from './quizApi.js';
 import { showAlert, showConfirm, showPrompt, showToast } from './modal.js';
 
+// 投稿者一覧は滅多に変わらないデータなので、一度取得したらページを開いてる間ずっと使い回す
+let cachedAuthors = null;
+
 // DBから返ってくる日時文字列(ISO形式)を、見やすい日本語表記に変換する
 function formatDateTime(isoString) {
   if (!isoString) return '-';
@@ -16,8 +19,11 @@ export async function initAuthorSelect() {
   const select = document.getElementById('author-select');
   if (!select) return; // HTML側にまだ用意していなければ何もしない
 
-  const { data, error } = await fetchAuthors(true);
-  if (error || !data) return;
+   if (!cachedAuthors) {
+    const { data, error } = await fetchAuthors();
+    if (error || !data) return;
+    cachedAuthors = data; // 初回だけサーバーに取りに行き、結果を変数に保存
+  }
 
   // 「指定なし」の選択肢を先頭に用意しておく
   const noneOption = document.createElement('option');
@@ -25,7 +31,7 @@ export async function initAuthorSelect() {
   noneOption.textContent = '(投稿者を選択)';
   select.appendChild(noneOption);
 
-  data.forEach(author => {
+  cachedAuthors.forEach(author => {
     const option = document.createElement('option');
     option.value = author.id;
     option.textContent = author.name;

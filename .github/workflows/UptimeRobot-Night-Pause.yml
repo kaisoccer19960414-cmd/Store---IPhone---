@@ -14,14 +14,12 @@ jobs:
         run: |
           if [ "${{ github.event.schedule }}" = "0 15 * * *" ]; then
             echo "→ 一時停止処理を実行"
-            curl -X PATCH "https://api.uptimerobot.com/v3/monitors/803526077" \
-              -H "Authorization: Bearer ${{ secrets.UPTIMEROBOT_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d '{"status": "PAUSED"}'
+            curl -X POST "https://api.uptimerobot.com/v2/editMonitor" \
+              -H "Content-Type: application/x-www-form-urlencoded" \
+              -d "api_key=${{ secrets.UPTIMEROBOT_API_KEY }}&id=803526077&status=0&format=json"
           else
             echo "→ 再開処理を実行"
-            curl -X PATCH "https://api.uptimerobot.com/v3/monitors/803526077" \
-              -H "Authorization: Bearer ${{ secrets.UPTIMEROBOT_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d '{"status": "UP"}'
+            curl -X POST "https://api.uptimerobot.com/v2/editMonitor" \
+              -H "Content-Type: application/x-www-form-urlencoded" \
+              -d "api_key=${{ secrets.UPTIMEROBOT_API_KEY }}&id=803526077&status=1&format=json"
           fi

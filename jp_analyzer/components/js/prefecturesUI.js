@@ -10,6 +10,7 @@ const INDICATOR_LABELS = {
   deaths: '死亡数',
   natural_change: '自然増減数',
   social_change: '社会増減数',
+  divorces: '離婚件数',
 };
 
 function indicatorLabel(code) {

@@ -33,10 +33,64 @@ SUPABASE_HEADERS = {
     'Content-Type': 'application/json',
 }
 
-YEAR_PATTERN = re.compile(r'^(\d{4})年度?$')
+YEAR_PATTERN_PLAIN = re.compile(r'^(\d{4})年$')
+YEAR_PATTERN_FISCAL = re.compile(r'^(\d{4})年度$')
 # 「1995年10月〜1996年9月」のような期間形式。終了年を代表年として扱う
 YEAR_RANGE_PATTERN = re.compile(r'^(\d{4})年\d{1,2}月[〜～~](\d{4})年\d{1,2}月$')
 UNIT_PATTERN = re.compile(r'[【\[](.+?)[】\]]')
+
+# 同じ(都道府県,指標,年)が複数の時点表記(暦年/年度/期間)から出てきた場合の優先順位。
+# 数字が大きい方を採用する。基本は「暦年(年)」を優先し、年度は暦年が無い場合だけ使う。
+KIND_PRIORITY = {'calendar': 3, 'range': 2, 'fiscal': 1}
+
+
+def parse_year_kind(value):
+    """「2024年」→(2024,'calendar')、「2024年度」→(2024,'fiscal')、
+    「1995年10月〜1996年9月」→(1996,'range')。該当しなければ(None, None)"""
+    s = str(value).strip()
+    m = YEAR_PATTERN_PLAIN.match(s)
+    if m:
+        return int(m.group(1)), 'calendar'
+    m = YEAR_PATTERN_FISCAL.match(s)
+    if m:
+        return int(m.group(1)), 'fiscal'
+    m = YEAR_RANGE_PATTERN.match(s)
+    if m:
+        return int(m.group(2)), 'range'
+    return None, None
+
+
+def parse_year(value):
+    """年だけが欲しい場合の簡易版(--inspectの表示用)"""
+    year, _ = parse_year_kind(value)
+    return year
+
+
+class RowCollector:
+    """(prefecture_id, indicator, year)の重複を、時点表記の優先順位(暦年 > 期間 > 年度)で
+    解決しながら行を集める。同じキーが複数の時点表記から来た場合、優先順位が高い方を残す。"""
+
+    def __init__(self):
+        self._by_key = {}
+        self.conflicts = []
+
+    def add(self, row, kind):
+        key = (row['prefecture_id'], row['indicator'], row['year'])
+        existing = self._by_key.get(key)
+        if existing is None:
+            self._by_key[key] = (kind, row)
+            return
+        existing_kind, _ = existing
+        if KIND_PRIORITY[kind] > KIND_PRIORITY[existing_kind]:
+            self.conflicts.append((key, existing_kind, kind))
+            self._by_key[key] = (kind, row)
+        elif KIND_PRIORITY[kind] < KIND_PRIORITY[existing_kind]:
+            self.conflicts.append((key, existing_kind, kind))
+        else:
+            self.conflicts.append((key, existing_kind, kind))
+
+    def rows(self):
+        return [row for _, row in self._by_key.values()]
 
 
 def fetch_prefecture_ids():
@@ -47,18 +101,6 @@ def fetch_prefecture_ids():
     )
     res.raise_for_status()
     return {row['name']: row['id'] for row in res.json()}
-
-
-def parse_year(value):
-    """「2024年」「2024年度」「1995年10月〜1996年9月」等から代表年(int)を取り出す。該当しなければNone"""
-    s = str(value).strip()
-    m = YEAR_PATTERN.match(s)
-    if m:
-        return int(m.group(1))
-    m = YEAR_RANGE_PATTERN.match(s)
-    if m:
-        return int(m.group(2))
-    return None
 
 
 def parse_number(value):
@@ -122,7 +164,7 @@ def handle_long(df, args, prefecture_ids):
             if c not in ignore and not str(c).startswith('注記')
         }
 
-    rows = []
+    collector = RowCollector()
     skipped_unmatched = set()
     for _, row in df.iterrows():
         name = row[pref_col]
@@ -133,7 +175,7 @@ def handle_long(df, args, prefecture_ids):
             skipped_unmatched.add(name)
             continue
 
-        year = parse_year(row[time_col])
+        year, kind = parse_year_kind(row[time_col])
         if year is None:
             continue
 
@@ -145,15 +187,15 @@ def handle_long(df, args, prefecture_ids):
                 continue
             indicator = args.indicator or indicator_name
             unit = args.unit or extract_unit(col) or ''
-            rows.append({
+            collector.add({
                 'prefecture_id': pref_id,
                 'indicator': indicator,
                 'year': year,
                 'value': value,
                 'unit': unit,
                 'source': args.source,
-            })
-    return rows, skipped_unmatched
+            }, kind)
+    return collector.rows(), skipped_unmatched, collector.conflicts
 
 
 # ---------------------------------------------------------------------------
@@ -166,10 +208,10 @@ def handle_wide_year_rows(df, args, prefecture_ids):
 
     pref_columns = [c for c in df.columns if c != time_col and c != '全国']
 
-    rows = []
+    collector = RowCollector()
     skipped_unmatched = set()
     for _, row in df.iterrows():
-        year = parse_year(row[time_col])
+        year, kind = parse_year_kind(row[time_col])
         if year is None:
             continue
         for pref_name in pref_columns:
@@ -180,27 +222,27 @@ def handle_wide_year_rows(df, args, prefecture_ids):
             value = parse_number(row[pref_name])
             if value is None:
                 continue
-            rows.append({
+            collector.add({
                 'prefecture_id': pref_id,
                 'indicator': args.indicator,
                 'year': year,
                 'value': value,
                 'unit': args.unit or '',
                 'source': args.source,
-            })
-    return rows, skipped_unmatched
+            }, kind)
+    return collector.rows(), skipped_unmatched, collector.conflicts
 
 
 # ---------------------------------------------------------------------------
 # shape: wide-pref-rows  (行=都道府県、列=年度。従来のFEH/社会・人口統計体系形式)
 # ---------------------------------------------------------------------------
 def extract_year_columns(df):
-    """年度を表す列を(位置インデックス, 年)のリストで返す(重複列名対策で位置ベース)"""
+    """年度を表す列を(位置インデックス, 年, 種別)のリストで返す(重複列名対策で位置ベース)"""
     year_columns = []
     for idx, col in enumerate(df.columns):
-        year = parse_year(col)
+        year, kind = parse_year_kind(col)
         if year is not None:
-            year_columns.append((idx, year))
+            year_columns.append((idx, year, kind))
     return year_columns
 
 
@@ -209,61 +251,60 @@ def handle_wide_pref_rows(df, args, prefecture_ids):
         df = df[df[col] == value]
     df = df[df[args.pref_column] != '全国']
 
+    collector = RowCollector()
+    skipped_unmatched = set()
+
     if args.value_column:
         # 特定の1列だけを対象にする(社会・人口統計体系のA1101など)場合は、
         # 「年度列」ではなくこの列1本だけを見る(年度は別の時点列から取る)
         if args.value_column not in df.columns:
             raise SystemExit(f'列 {args.value_column!r} が見つかりません。')
-        rows = []
-        skipped_unmatched = set()
         for _, row in df.iterrows():
             name = row[args.pref_column]
             pref_id = prefecture_ids.get(name)
             if pref_id is None:
                 skipped_unmatched.add(name)
                 continue
-            year = parse_year(row[args.time_column]) if args.time_column in df.columns else None
+            year, kind = parse_year_kind(row[args.time_column]) if args.time_column in df.columns else (None, None)
             if year is None:
                 continue
             value = parse_number(row[args.value_column])
             if value is None:
                 continue
-            rows.append({
+            collector.add({
                 'prefecture_id': pref_id,
                 'indicator': args.indicator,
                 'year': year,
                 'value': value,
                 'unit': args.unit or extract_unit(args.value_column) or '',
                 'source': args.source,
-            })
-        return rows, skipped_unmatched
+            }, kind)
+        return collector.rows(), skipped_unmatched, collector.conflicts
 
     # 年度が列に展開されているケース(FEHの標準形式)
     year_columns = extract_year_columns(df)
     if not year_columns:
         raise SystemExit('年度の列が見つかりません。--filterや列名、または--value-columnの指定を確認してください。')
 
-    rows = []
-    skipped_unmatched = set()
     for _, row in df.iterrows():
         name = row[args.pref_column]
         pref_id = prefecture_ids.get(name)
         if pref_id is None:
             skipped_unmatched.add(name)
             continue
-        for idx, year in year_columns:
+        for idx, year, kind in year_columns:
             value = parse_number(row.iloc[idx])
             if value is None:
                 continue
-            rows.append({
+            collector.add({
                 'prefecture_id': pref_id,
                 'indicator': args.indicator,
                 'year': year,
                 'value': value,
                 'unit': args.unit or '',
                 'source': args.source,
-            })
-    return rows, skipped_unmatched
+            }, kind)
+    return collector.rows(), skipped_unmatched, collector.conflicts
 
 
 SHAPE_HANDLERS = {
@@ -299,6 +340,13 @@ def main():
 
     all_rows = []
     all_skipped = set()
+    all_conflicts = []
+    label_suggestions = {}  # indicator名 -> 日本語ラベル候補(INDICATOR_LABELS用)
+
+    if args.shape == 'long':
+        column_map = parse_column_map(args.column)
+        for col, indicator_name in column_map.items():
+            label_suggestions[args.indicator or indicator_name] = strip_unit(col)
 
     for csv_name in args.csv:
         csv_path = ROOT_DIR / 'jp_analyzer' / 'data' / csv_name
@@ -320,9 +368,18 @@ def main():
                   '検出した全列をそれぞれ列名ベースのindicatorとして投入します。')
 
         prefecture_ids = fetch_prefecture_ids()
-        rows, skipped = SHAPE_HANDLERS[args.shape](df, args, prefecture_ids)
+        rows, skipped, conflicts = SHAPE_HANDLERS[args.shape](df, args, prefecture_ids)
         all_rows.extend(rows)
         all_skipped |= skipped
+        all_conflicts.extend(conflicts)
+
+        if args.shape == 'long' and not parse_column_map(args.column):
+            # --columnを指定しなかった場合、検出した列名からもラベル候補を作る
+            ignore = {args.time_column, args.pref_column, '地域コード', '地域 コード'}
+            for c in df.columns:
+                if c in ignore or str(c).startswith('注記'):
+                    continue
+                label_suggestions[args.indicator or strip_unit(c)] = strip_unit(c)
 
     if args.inspect:
         return
@@ -330,7 +387,19 @@ def main():
     if all_skipped:
         print(f'警告: prefecturesテーブルに見つからず、スキップした名前: {sorted(all_skipped)}')
 
-    print(f'{len(all_rows)} 件を投入します')
+    if all_conflicts:
+        # 「暦年」と「年度」等、同じ(都道府県,指標,年)が複数の時点表記から来た場合の解決ログ。
+        # 暦年 > 期間 > 年度 の優先順位で、優先度が高い方を採用している。
+        print(f'\n情報: 同じ(都道府県,指標,年)に複数の時点表記が見つかったため、優先順位で解決しました({len(all_conflicts)}件)。')
+        for key, existing_kind, new_kind in all_conflicts[:10]:
+            print(f'  {key}: {existing_kind} vs {new_kind}')
+
+    print(f'\n{len(all_rows)} 件を投入します')
+
+    if label_suggestions:
+        print('\n=== INDICATOR_LABELS への追加候補(prefecturesUI.js) ===')
+        for indicator, label in label_suggestions.items():
+            print(f"  {indicator}: '{label}',")
 
     if args.dry_run:
         all_rows.sort(key=lambda r: (r['indicator'], r['prefecture_id'], r['year']))

@@ -9,37 +9,40 @@
 <body>
 
     <h2>E-STAT活用 CSVデータ分析/集計編</h2>
-    <h5>現在:[1975~2025]</h5>
-    
-
 
     <div style="text-align: right; margin-bottom: 15px;">
         <a href="../index.html" class="nav-back">← トップへ戻る</a>
     </div>
 
     <div class="section">
-        <h3>都道府県別データ</h3>
+        <h3>都道府県一覧</h3>
         <div class="search-bar">
             <input type="text" id="pref-search-input" placeholder="都道府県名で検索" autocomplete="off">
             <button id="pref-search-btn">検索</button>
             <button id="pref-search-clear-btn">クリア</button>
-            <select id="pref-indicator-select"></select>
-            <select id="pref-year-select"></select>
         </div>
-        <table id="pref-table">
-            <thead>
-                <tr>
-                    <th data-sort="name">都道府県名</th>
-                    <th data-sort="region_block">地方</th>
-                    <th data-sort="indicator">指標</th>
-                    <th data-sort="value">値</th>
-                    <th data-sort="year">年度</th>
-                </tr>
-            </thead>
-            <tbody id="pref-table-body"></tbody>
-        </table>
-        <div id="pref-status"></div>
-         <div id="pref-note" class="pref-note"></div>
+        <div id="pref-controls" class="hidden">
+            <div class="search-bar">
+                <select id="pref-indicator-select"></select>
+                <select id="pref-year-select"></select>
+            </div>
+        </div>
+        <div id="pref-results" class="hidden">
+            <table id="pref-table">
+                <thead>
+                    <tr>
+                        <th data-sort="name">都道府県名</th>
+                        <th data-sort="region_block">地方</th>
+                        <th data-sort="indicator">指標</th>
+                        <th data-sort="value">値</th>
+                        <th data-sort="year">年度</th>
+                    </tr>
+                </thead>
+                <tbody id="pref-table-body"></tbody>
+            </table>
+            <div id="pref-status"></div>
+            <div id="pref-note" class="pref-note"></div>
+        </div>
     </div>
 
     <script type="module" src="components/js/main.js"></script>

@@ -1,6 +1,9 @@
 * {
     box-sizing: border-box;
 }
+.hidden {
+    display: none;
+}
 body {
     font-family: sans-serif;
     padding: 20px;
@@ -68,10 +71,10 @@ th.sort-desc::after {
     font-size: 0.8em;
 }
 #pref-table-body td:nth-child(4) {
-    color: #027a0a;
+    color: #146418;
 }
 #pref-table-body td:nth-child(5) {
-    color: #0452ac;
+    color: #095fc2;
 }
 .nav-back {
     display: inline-block;

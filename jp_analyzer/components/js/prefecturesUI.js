@@ -9,7 +9,7 @@ const INDICATOR_LABELS = {
   births: '出生数',
   deaths: '死亡数',
   natural_change: '自然増減数',
-  social_change: '社会増減数(近似値)',
+  social_change: '社会増減数',
 };
 
 function indicatorLabel(code) {
@@ -67,7 +67,13 @@ function renderRows(data) {
   });
 }
 
+function revealResults() {
+  document.getElementById('pref-controls').classList.remove('hidden');
+  document.getElementById('pref-results').classList.remove('hidden');
+}
+
 export async function loadPrefectures() {
+  revealResults();
   const status = document.getElementById('pref-status');
   const note = document.getElementById('pref-note');
   status.textContent = '読み込み中...';
@@ -182,11 +188,4 @@ export async function initSelectors() {
     indicatorSelect.value = currentIndicator;
     populateYearOptions(currentIndicator);
   }
-}
-
-// ページを開いた直後は、テーブルを自動表示せず案内メッセージだけ出す。
-// 都道府県名で検索するか、指標・年度を選び直すと、そこで初めてloadPrefecturesが呼ばれる。
-export function showInitialPrompt() {
-  const status = document.getElementById('pref-status');
-  status.textContent = '都道府県名で検索するか、上の指標・年度を選び直してください。';
 }

@@ -305,22 +305,26 @@ def get_prefecture_stats():
     if query:
         year = None
 
-    # sortが「都道府県側(name/region_block)」か「統計値側(value/year/indicator)」かで書き方が変わる
+    # sortが「都道府県側(name/region_block)」か「統計値側(value/year)」か「指標名」かで書き方が変わる
     if sort == 'name':
         order_clause = f'prefectures(name).{order}'
     elif sort == 'region_block':
         order_clause = f'prefectures(region_block).{order}'
-    elif sort in ('value', 'year', 'indicator'):
+    elif sort == 'indicator':
+        order_clause = f'indicators(name).{order}'
+    elif sort in ('value', 'year'):
         order_clause = f'{sort}.{order}'
     else:
         order_clause = f'value.{order}'
 
+    # indicatorは正規化により prefecture_stats.indicator_id → indicators.name の
+    # 参照になったので、埋め込み(indicators!inner(name))経由で扱う
     params = {
-        'select': 'indicator,value,year,unit,prefectures!inner(id,name,region_block)',
+        'select': 'value,year,unit,indicators!inner(name),prefectures!inner(id,name,region_block)',
         'order': order_clause,
     }
     if indicator:
-        params['indicator'] = f'eq.{indicator}'
+        params['indicators.name'] = f'eq.{indicator}'
     if year:
         params['year'] = f'eq.{year}'
     if query:
@@ -334,7 +338,17 @@ def get_prefecture_stats():
         headers=SUPABASE_HEADERS,
         params=params
     )
-    return jsonify(res.json()), res.status_code
+    if res.status_code != 200:
+        return jsonify(res.json()), res.status_code
+
+    # フロント側は item.indicator をそのまま読む作りのままにしたいので、
+    # 埋め込みで返ってくる indicators.name をここで平坦化しておく
+    data = res.json()
+    for row in data:
+        embedded = row.pop('indicators', None)
+        row['indicator'] = embedded['name'] if embedded else None
+
+    return jsonify(data), 200
 
 
 @app.route('/stats-meta', methods=['GET'])

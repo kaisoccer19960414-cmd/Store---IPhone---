@@ -67,6 +67,28 @@ function renderRows(data) {
   });
 }
 
+function updateSummaryDisplay(data) {
+  const summary = document.getElementById('pref-summary');
+  const table = document.getElementById('pref-table');
+
+  if (!currentQuery || data.length === 0) {
+    summary.classList.add('hidden');
+    summary.textContent = '';
+    table.classList.remove('compact');
+    return;
+  }
+
+  // 検索結果は「1つの都道府県 × 1つの指標」に絞られてるはずなので、
+  // 先頭行の情報を見出しにまとめて、都道府県名・地方・指標の列は隠す
+  const first = data[0];
+  const name = first.prefectures?.name ?? currentQuery;
+  const region = first.prefectures?.region_block ?? '';
+  const label = indicatorLabel(currentIndicator);
+  summary.textContent = region ? `${name}(${region}) — ${label}` : `${name} — ${label}`;
+  summary.classList.remove('hidden');
+  table.classList.add('compact');
+}
+
 function revealResults() {
   document.getElementById('pref-controls').classList.remove('hidden');
   document.getElementById('pref-results').classList.remove('hidden');
@@ -83,13 +105,14 @@ export async function loadPrefectures() {
   try {
     const data = await fetchPrefectureStats(currentQuery, currentSort, currentOrder, currentIndicator, currentYear);
     renderRows(data);
+    updateSummaryDisplay(data);
 
     if (data.length === 0) {
       status.textContent = currentQuery
         ? `「${currentQuery}」の${indicatorLabel(currentIndicator)}データが見つかりませんでした。`
         : `${currentYear ?? ''}年のデータが見つかりませんでした。`;
     } else if (currentQuery) {
-      status.textContent = `「${currentQuery}」の${indicatorLabel(currentIndicator)}データを ${data.length} 件表示中です(全年度)。`;
+      status.textContent = `${data.length} 件表示中です(全年度)。`;
     } else {
       status.textContent = `${currentYear}年のデータを ${data.length} 件表示中です。`;
     }

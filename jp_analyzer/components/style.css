@@ -71,10 +71,25 @@ th.sort-desc::after {
     font-size: 0.8em;
 }
 #pref-table-body td:nth-child(4) {
-    color: #146418;
+    color: #2e7d32;
 }
 #pref-table-body td:nth-child(5) {
-    color: #095fc2;
+    color: #1565c0;
+}
+.pref-summary {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+/* 検索結果表示中は、都道府県名・地方・指標の列(1〜3列目)を隠して
+   見出し(.pref-summary)にまとめて出す */
+#pref-table.compact th:nth-child(1),
+#pref-table.compact th:nth-child(2),
+#pref-table.compact th:nth-child(3),
+#pref-table.compact td:nth-child(1),
+#pref-table.compact td:nth-child(2),
+#pref-table.compact td:nth-child(3) {
+    display: none;
 }
 .nav-back {
     display: inline-block;

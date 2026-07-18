@@ -17,11 +17,11 @@ jobs:
             curl -X PATCH "https://api.uptimerobot.com/v3/monitors/{monitor_id}" \
               -H "Authorization: Bearer ${{ secrets.UPTIMEROBOT_API_KEY }}" \
               -H "Content-Type: application/json" \
-              -d '{"status": "paused"}'
+              -d '{"paused": true}'
           else
             echo "→ 再開処理を実行"
             curl -X PATCH "https://api.uptimerobot.com/v3/monitors/{monitor_id}" \
               -H "Authorization: Bearer ${{ secrets.UPTIMEROBOT_API_KEY }}" \
               -H "Content-Type: application/json" \
-              -d '{"status": "active"}'
+              -d '{"paused": false}'
           fi

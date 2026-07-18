@@ -11,6 +11,14 @@ const INDICATOR_LABELS = {
   natural_change: '自然増減数',
   social_change: '社会増減数',
   divorces: '離婚件数',
+    total_area: '総面積',
+  forest_area: '森林面積',
+  avg_temperature: '平均気温',
+  max_temperature: '最高気温',
+  min_temperature: '最低気温',
+  sunny_days: '快晴日数',
+  cloudy_days: '曇天日数',
+  rain_days: '降水日数',
 };
 
 function indicatorLabel(code) {

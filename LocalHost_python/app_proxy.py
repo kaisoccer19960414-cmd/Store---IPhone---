@@ -62,7 +62,7 @@ LOCAL_TEST_ORIGINS = [
     'http://127.0.0.1:5501',
     'http://localhost:5501',
 ]
-CORS(app, origins=[PREVIEW_ORIGIN_PATTERN, *LOCAL_TEST_ORIGINS], max_age=3600)
+CORS(app, origins=[PREVIEW_ORIGIN_PATTERN, *LOCAL_TEST_ORIGINS])
 
 APP_PASSCODE = os.environ.get('APP_PASSCODE')
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
@@ -179,7 +179,9 @@ def require_login(f):
 
 @app.route('/ping', methods=['GET'])
 def ping():
+    """Renderのスリープ解除(ウォームアップ)用。Supabaseへは繋がず即座に200を返す軽量エンドポイント"""
     return jsonify({'status': 'ok'}), 200
+
 
 @app.route('/quiz_data', methods=['GET'])
 def get_all_quizzes():
@@ -255,8 +257,6 @@ def delete_quiz(quiz_id):
     )
     return jsonify({'deleted': quiz_id}), 200
 
-
-
 @app.route('/prefectures', methods=['GET'])
 def get_all_prefectures():
     """都道府県データの一覧(認証不要の公開データ。検索・並び替え対応)"""
@@ -277,7 +277,10 @@ def get_all_prefectures():
     }
     if query:
         escaped_query = query.replace('*', r'\*')
-        params['name'] = f'ilike.*{escaped_query}*'
+        # 部分一致(*query*)だと「京都」で検索したときに「東京都」まで
+        # ヒットしてしまう(「東京都」の2〜3文字目がたまたま「京都」と一致するため)。
+        # 先頭一致(query*)にすることで、この種の誤ヒットを防ぐ。
+        params['name'] = f'ilike.{escaped_query}*'
 
     res = requests.get(
         f'{SUPABASE_URL}/rest/v1/prefectures',
@@ -322,7 +325,9 @@ def get_prefecture_stats():
         params['year'] = f'eq.{year}'
     if query:
         escaped_query = query.replace('*', r'\*')
-        params['prefectures.name'] = f'ilike.*{escaped_query}*'
+        # 先頭一致にする理由は/prefecturesと同じ(「京都」検索が「東京都」を
+        # 誤って拾ってしまう部分一致の問題を避けるため)
+        params['prefectures.name'] = f'ilike.{escaped_query}*'
 
     res = requests.get(
         f'{SUPABASE_URL}/rest/v1/prefecture_stats',

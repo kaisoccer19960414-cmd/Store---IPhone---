@@ -14,14 +14,14 @@ jobs:
         run: |
           if [ "${{ github.event.schedule }}" = "0 15 * * *" ]; then
             echo "→ 一時停止処理を実行"
-            curl -X PATCH "https://api.uptimerobot.com/v3/monitors/{monitor_id}" \
+            curl -X PATCH "https://api.uptimerobot.com/v3/monitors/803526077" \
               -H "Authorization: Bearer ${{ secrets.UPTIMEROBOT_API_KEY }}" \
               -H "Content-Type: application/json" \
-              -d '{"paused": true}'
+              -d '{"status": "PAUSED"}'
           else
             echo "→ 再開処理を実行"
-            curl -X PATCH "https://api.uptimerobot.com/v3/monitors/{monitor_id}" \
+            curl -X PATCH "https://api.uptimerobot.com/v3/monitors/803526077" \
               -H "Authorization: Bearer ${{ secrets.UPTIMEROBOT_API_KEY }}" \
               -H "Content-Type: application/json" \
-              -d '{"paused": false}'
+              -d '{"status": "UP"}'
           fi

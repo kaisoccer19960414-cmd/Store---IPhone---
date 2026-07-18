@@ -14,24 +14,9 @@ e-Stat / 統計ダッシュボードから落としてきたCSVを、prefecture_
   3. 問題なければ --dry-run を外して本番投入する
 """
 import argparse
-import os
 import re
-from pathlib import Path
 import pandas as pd
-import requests
-from dotenv import load_dotenv
-
-ROOT_DIR = Path(__file__).resolve().parents[2]
-load_dotenv(ROOT_DIR / '.env')
-
-SUPABASE_URL = os.environ.get('SUPABASE_URL')
-SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')
-
-SUPABASE_HEADERS = {
-    'apikey': SUPABASE_SERVICE_KEY,
-    'Authorization': f'Bearer {SUPABASE_SERVICE_KEY}',
-    'Content-Type': 'application/json',
-}
+import stats_db  # jp_analyzer/scripts/stats_db.py (indicator/sourceの正規化を吸収する共通モジュール)
 
 YEAR_PATTERN_PLAIN = re.compile(r'^(\d{4})年$')
 YEAR_PATTERN_FISCAL = re.compile(r'^(\d{4})年度$')
@@ -94,13 +79,7 @@ class RowCollector:
 
 
 def fetch_prefecture_ids():
-    res = requests.get(
-        f'{SUPABASE_URL}/rest/v1/prefectures',
-        headers=SUPABASE_HEADERS,
-        params={'select': 'id,name'}
-    )
-    res.raise_for_status()
-    return {row['name']: row['id'] for row in res.json()}
+    return stats_db.fetch_prefecture_ids()
 
 
 def parse_number(value):
@@ -412,12 +391,7 @@ def main():
         print('投入するデータがありません。')
         return
 
-    res = requests.post(
-        f'{SUPABASE_URL}/rest/v1/prefecture_stats?on_conflict=prefecture_id,indicator,year',
-        headers={**SUPABASE_HEADERS, 'Prefer': 'return=representation,resolution=merge-duplicates'},
-        json=all_rows
-    )
-    print(res.status_code, res.text[:500])
+    stats_db.upsert_rows(all_rows)
 
 
 if __name__ == '__main__':

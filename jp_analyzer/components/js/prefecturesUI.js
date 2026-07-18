@@ -19,6 +19,11 @@ const INDICATOR_LABELS = {
   sunny_days: '快晴日数',
   cloudy_days: '曇天日数',
   rain_days: '降水日数',
+  job_availability_ratio: '有効求人倍率',
+  labor_force_population: '労働力人口（国勢調査）',
+  primary_industry_workers: '第１次産業就業者数',
+  secondary_industry_workers: '第２次産業就業者数',
+  tertiary_industry_workers: '第３次産業就業者数',
 };
 
 function indicatorLabel(code) {

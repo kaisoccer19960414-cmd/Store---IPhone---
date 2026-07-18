@@ -342,38 +342,18 @@ def get_stats_meta():
     """登録済みのindicator一覧と、それぞれで使える年度一覧を返す。
     フロント側の指標・年度セレクトをここから動的に組み立てることで、
     新しいCSV(新しいindicator)を投入してもコードを書き直さずに済むようにする。
-    PostgRESTはデフォルトで1件数に上限があるため、limit/offsetで全件取り切るまでページングする。
-    (テーブルが大きくなってきたらDB側でDISTINCTを取るビュー/RPCに切り替える)"""
-    all_rows = []
-    page_size = 1000
-    offset = 0
-    while True:
-        res = requests.get(
-            f'{SUPABASE_URL}/rest/v1/prefecture_stats',
-            headers=SUPABASE_HEADERS,
-            params={
-                'select': 'indicator,year,unit',
-                'order': 'indicator.asc,year.desc',
-                'limit': page_size,
-                'offset': offset,
-            }
-        )
-        if res.status_code != 200:
-            return jsonify(res.json()), res.status_code
-        batch = res.json()
-        all_rows.extend(batch)
-        if len(batch) < page_size:
-            break
-        offset += page_size
-
-    meta = {}
-    for row in all_rows:
-        indicator = row['indicator']
-        entry = meta.setdefault(indicator, {'indicator': indicator, 'unit': row.get('unit'), 'years': []})
-        if row['year'] not in entry['years']:
-            entry['years'].append(row['year'])
-
-    return jsonify(list(meta.values())), 200
+    集計自体はSupabase側のstats_metaビュー(indicator, unit, years)で
+    あらかじめ済ませてあるので、ここでは単純にそれを読むだけ。
+    (65万件を超えたあたりからPython側でページングして集計する方式は
+     リクエスト回数が増えすぎてタイムアウトするようになったため、この形に変更した)"""
+    res = requests.get(
+        f'{SUPABASE_URL}/rest/v1/stats_meta',
+        headers=SUPABASE_HEADERS,
+        params={'select': 'indicator,unit,years', 'order': 'indicator.asc'}
+    )
+    if res.status_code != 200:
+        return jsonify(res.json()), res.status_code
+    return jsonify(res.json()), 200
 
 
 if __name__ == '__main__':

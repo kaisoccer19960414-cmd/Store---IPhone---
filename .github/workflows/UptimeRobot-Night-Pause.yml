@@ -1,19 +1,24 @@
 name: UptimeRobot Night Pause
+
 on:
   schedule:
     - cron: '0 15 * * *'   # UTC 15:00 = JST 0:00 → 一時停止
     - cron: '0 22 * * *'   # UTC 22:00 = JST 7:00 → 再開
+  workflow_dispatch:
+
 jobs:
   toggle:
     runs-on: ubuntu-latest
     steps:
       - name: Pause or Resume
         run: |
-          if [ "$(date -u +%H)" = "15" ]; then
+          if [ "${{ github.event.schedule }}" = "0 15 * * *" ]; then
+            echo "→ 一時停止処理を実行"
             curl -X PATCH "https://api.uptimerobot.com/v3/monitors/{monitor_id}" \
               -H "Authorization: Bearer ${{ secrets.UPTIMEROBOT_API_KEY }}" \
               -d '{"status": "paused"}'
           else
+            echo "→ 再開処理を実行"
             curl -X PATCH "https://api.uptimerobot.com/v3/monitors/{monitor_id}" \
               -H "Authorization: Bearer ${{ secrets.UPTIMEROBOT_API_KEY }}" \
               -d '{"status": "active"}'

@@ -55,8 +55,32 @@ def _get_or_create_id(table, name, cache):
     return new_id
 
 
-def get_indicator_id(name):
-    return _get_or_create_id('indicators', name, _indicator_cache)
+def get_indicator_id(name, unit=None):
+    """indicator名からIDを引く。新規作成時はunitもここで一緒に登録する
+    (unitはindicatorsテーブル側に正規化してあり、prefecture_statsには持たせていない)。"""
+    if name in _indicator_cache:
+        return _indicator_cache[name]
+
+    res = requests.get(
+        f'{SUPABASE_URL}/rest/v1/indicators',
+        headers=SUPABASE_HEADERS,
+        params={'select': 'id', 'name': f'eq.{name}'}
+    )
+    res.raise_for_status()
+    rows = res.json()
+    if rows:
+        _indicator_cache[name] = rows[0]['id']
+        return _indicator_cache[name]
+
+    res = requests.post(
+        f'{SUPABASE_URL}/rest/v1/indicators',
+        headers={**SUPABASE_HEADERS, 'Prefer': 'return=representation'},
+        json={'name': name, 'unit': unit or ''}
+    )
+    res.raise_for_status()
+    new_id = res.json()[0]['id']
+    _indicator_cache[name] = new_id
+    return new_id
 
 
 def get_source_id(name):
@@ -76,15 +100,15 @@ def fetch_prefecture_ids():
 def upsert_rows(rows, chunk_size=5000):
     """rows: [{'prefecture_id','indicator','year','value','unit','source'}, ...] の形を受け取り、
     indicator/sourceをIDに変換したうえでprefecture_statsにUPSERTする。
+    unitはindicatorsテーブル側に正規化してあるので、prefecture_stats自体には送らない。
     戻り値: [(開始件数, 終了件数, ステータスコード), ...]"""
     payload = []
     for r in rows:
         payload.append({
             'prefecture_id': r['prefecture_id'],
-            'indicator_id': get_indicator_id(r['indicator']),
+            'indicator_id': get_indicator_id(r['indicator'], unit=r.get('unit')),
             'year': r['year'],
             'value': r['value'],
-            'unit': r.get('unit') or '',
             'source_id': get_source_id(r['source']) if r.get('source') else None,
         })
 
@@ -120,6 +144,71 @@ def refresh_stats_meta():
         print(f'stats_metaの再計算: {res.status_code}')
     except Exception as e:
         print(f'stats_metaの再計算に失敗しました({e})。後で手動実行してください: select refresh_stats_meta();')
+
+
+def find_indicators(exact=None, patterns=None):
+    """indicatorsテーブルから、名前が一致する/部分一致するものを検索する(存在しなくても新規作成はしない)。
+    exact: 完全一致させたい名前のリスト
+    patterns: ILIKEパターン(%を含む)のリスト。例: ['%（女）', '就業者数%']
+    戻り値: [{'id':.., 'name':..}, ...]"""
+    found = {}
+    for name in exact or []:
+        res = requests.get(
+            f'{SUPABASE_URL}/rest/v1/indicators',
+            headers=SUPABASE_HEADERS,
+            params={'select': 'id,name', 'name': f'eq.{name}'}
+        )
+        res.raise_for_status()
+        for row in res.json():
+            found[row['id']] = row
+
+    for pattern in patterns or []:
+        res = requests.get(
+            f'{SUPABASE_URL}/rest/v1/indicators',
+            headers=SUPABASE_HEADERS,
+            params={'select': 'id,name', 'name': f'ilike.{pattern}'}
+        )
+        res.raise_for_status()
+        for row in res.json():
+            found[row['id']] = row
+
+    return list(found.values())
+
+
+def delete_indicators(indicator_ids, dry_run=False):
+    """指定したindicator_idに紐づくprefecture_statsの行と、indicators自体の行を削除する。
+    戻り値: 削除した(予定の)prefecture_stats行数の合計"""
+    total = 0
+    for indicator_id in indicator_ids:
+        res = requests.get(
+            f'{SUPABASE_URL}/rest/v1/prefecture_stats',
+            headers=SUPABASE_HEADERS,
+            params={'select': 'id', 'indicator_id': f'eq.{indicator_id}'}
+        )
+        res.raise_for_status()
+        count = len(res.json())
+        total += count
+
+        if dry_run:
+            continue
+
+        del_res = requests.delete(
+            f'{SUPABASE_URL}/rest/v1/prefecture_stats',
+            headers=SUPABASE_HEADERS,
+            params={'indicator_id': f'eq.{indicator_id}'}
+        )
+        print(f'  indicator_id={indicator_id}: {count}件削除 ({del_res.status_code})')
+
+        # prefecture_stats側を消し終わったら、indicators本体の行も削除する
+        requests.delete(
+            f'{SUPABASE_URL}/rest/v1/indicators',
+            headers=SUPABASE_HEADERS,
+            params={'id': f'eq.{indicator_id}'}
+        )
+
+    if not dry_run:
+        refresh_stats_meta()
+    return total
 
 
 def fetch_stats_by_indicator(indicator_name, select='prefecture_id,year,value'):

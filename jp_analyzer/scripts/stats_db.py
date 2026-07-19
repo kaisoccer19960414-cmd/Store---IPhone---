@@ -102,7 +102,24 @@ def upsert_rows(rows, chunk_size=5000):
         except Exception as e:
             print(f'{start}〜{start + len(chunk)}件目: 例外({e})。スキップして続行します。')
             results.append((start, start + len(chunk), None))
+
+    refresh_stats_meta()
     return results
+
+
+def refresh_stats_meta():
+    """指標一覧を集計済みで持っているマテリアライズドビュー(stats_meta)を再計算する。
+    データ投入のたびに呼ぶことで、フロントの指標・年度セレクトが最新の状態に保たれる。
+    (毎回全件集計し直すと重いクエリになるため、view ではなく materialized view + 手動更新にしている)"""
+    try:
+        res = requests.post(
+            f'{SUPABASE_URL}/rest/v1/rpc/refresh_stats_meta',
+            headers=SUPABASE_HEADERS,
+            json={}
+        )
+        print(f'stats_metaの再計算: {res.status_code}')
+    except Exception as e:
+        print(f'stats_metaの再計算に失敗しました({e})。後で手動実行してください: select refresh_stats_meta();')
 
 
 def fetch_stats_by_indicator(indicator_name, select='prefecture_id,year,value'):

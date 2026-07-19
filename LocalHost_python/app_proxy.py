@@ -359,15 +359,32 @@ def get_stats_meta():
     集計自体はSupabase側のstats_metaビュー(indicator, unit, years)で
     あらかじめ済ませてあるので、ここでは単純にそれを読むだけ。
     (65万件を超えたあたりからPython側でページングして集計する方式は
-     リクエスト回数が増えすぎてタイムアウトするようになったため、この形に変更した)"""
-    res = requests.get(
-        f'{SUPABASE_URL}/rest/v1/stats_meta',
-        headers=SUPABASE_HEADERS,
-        params={'select': 'indicator,unit,years', 'order': 'indicator.asc'}
-    )
-    if res.status_code != 200:
-        return jsonify(res.json()), res.status_code
-    return jsonify(res.json()), 200
+     リクエスト回数が増えすぎてタイムアウトするようになったため、この形に変更した)
+    ただしstats_metaは「1指標1行」でも、指標の種類自体が増えてくると
+    PostgRESTのデフォルト上限(だいたい1000件)に引っかかって静かに切り捨てられるため、
+    ここは軽いクエリなのでページングして全指標を取り切る。"""
+    all_rows = []
+    page_size = 1000
+    offset = 0
+    while True:
+        res = requests.get(
+            f'{SUPABASE_URL}/rest/v1/stats_meta',
+            headers=SUPABASE_HEADERS,
+            params={
+                'select': 'indicator,unit,years',
+                'order': 'indicator.asc',
+                'limit': page_size,
+                'offset': offset,
+            }
+        )
+        if res.status_code != 200:
+            return jsonify(res.json()), res.status_code
+        batch = res.json()
+        all_rows.extend(batch)
+        if len(batch) < page_size:
+            break
+        offset += page_size
+    return jsonify(all_rows), 200
 
 
 if __name__ == '__main__':

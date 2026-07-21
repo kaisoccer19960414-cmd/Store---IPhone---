@@ -2,8 +2,14 @@ name: UptimeRobot Night Pause
 
 on:
   schedule:
-    - cron: '0 15 * * *'   # UTC 15:00 = JST 0:00 → 一時停止
-    - cron: '0 22 * * *'   # UTC 22:00 = JST 7:00 → 再開
+    - cron: '0 15 * * *'   # JST 0:00 停止
+    - cron: '0 17 * * *'   # JST 2:00 再開
+    - cron: '30 17 * * *'  # JST 2:30 停止
+    - cron: '0 19 * * *'   # JST 4:00 再開
+    - cron: '30 19 * * *'  # JST 4:30 停止
+    - cron: '0 21 * * *'   # JST 6:00 再開
+    - cron: '30 21 * * *'  # JST 6:30 停止
+    - cron: '0 22 * * *'   # JST 7:00 再開
   workflow_dispatch:
 
 jobs:
@@ -12,13 +18,14 @@ jobs:
     steps:
       - name: Pause or Resume
         run: |
-          if [ "${{ github.event.schedule }}" = "0 15 * * *" ]; then
-            echo "→ 一時停止処理を実行"
+          SCHED="${{ github.event.schedule }}"
+          if [[ "$SCHED" == "0 15 * * *" || "$SCHED" == "30 17 * * *" || "$SCHED" == "30 19 * * *" || "$SCHED" == "30 21 * * *" ]]; then
+            echo "→ 一時停止処理を実行 ($SCHED)"
             curl -X POST "https://api.uptimerobot.com/v2/editMonitor" \
               -H "Content-Type: application/x-www-form-urlencoded" \
               -d "api_key=${{ secrets.UPTIMEROBOT_API_KEY }}&id=803526077&status=0&format=json"
           else
-            echo "→ 再開処理を実行"
+            echo "→ 再開処理を実行 ($SCHED)"
             curl -X POST "https://api.uptimerobot.com/v2/editMonitor" \
               -H "Content-Type: application/x-www-form-urlencoded" \
               -d "api_key=${{ secrets.UPTIMEROBOT_API_KEY }}&id=803526077&status=1&format=json"

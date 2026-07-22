@@ -1,0 +1,27 @@
+name: Toggle Cron-job.org Schedule
+
+on:
+  schedule:
+    - cron: '0 15 * * *'   # JST 0:00 → 無効化
+    - cron: '0 22 * * *'   # JST 7:00 → 有効化
+  workflow_dispatch:
+
+jobs:
+  toggle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable or Disable
+        run: |
+          if [ "${{ github.event.schedule }}" = "0 15 * * *" ]; then
+            echo "→ 無効化"
+            curl -X PATCH "https://api.cron-job.org/jobs/8140613" \
+              -H "Authorization: Bearer ${{ secrets.CRONJOB_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d '{"job": {"enabled": false}}'
+          else
+            echo "→ 有効化"
+            curl -X PATCH "https://api.cron-job.org/jobs/8140613" \
+              -H "Authorization: Bearer ${{ secrets.CRONJOB_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d '{"job": {"enabled": true}}'
+          fi

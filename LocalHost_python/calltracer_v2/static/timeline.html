@@ -87,7 +87,7 @@
   const startBtn = document.getElementById("start-btn");
   const stopBtn = document.getElementById("stop-btn");
 
-  let eventSource = null;
+  // (ポーリング用タイマーはconnectStream内で宣言済み)
 
   // 前回入力した認証値を復元しておく(手間を減らすため)
   const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
@@ -167,10 +167,7 @@
     const sessionId = localStorage.getItem(SESSION_STORAGE_KEY);
     const authValue = localStorage.getItem(AUTH_STORAGE_KEY);
 
-    if (eventSource) {
-      eventSource.close();
-      eventSource = null;
-    }
+    stopPolling();
 
     if (sessionId && authValue) {
       const headers = { "Content-Type": "application/json" };
@@ -193,23 +190,38 @@
     setStatus("idle", "終了しました");
   }
 
+  let pollTimer = null;
+
   function connectStream(sessionId) {
-    setStatus("connected", "接続中: /__calltracer__/stream");
-    eventSource = new EventSource(
-      "/__calltracer__/stream?session_id=" + encodeURIComponent(sessionId)
-    );
-    eventSource.onmessage = function (msg) {
-      let event;
-      try {
-        event = JSON.parse(msg.data);
-      } catch (e) {
-        return;
-      }
-      renderEvent(event);
-    };
-    eventSource.onerror = function () {
-      setStatus("disconnected", "切断されました(自動再接続を試みます)");
-    };
+    setStatus("connected", "ポーリング中: /__calltracer__/poll");
+    // 注意: 以前はEventSource(SSE)を使っていたが、Gunicornのsyncワーカーが
+    // 長時間ブロックする接続を「反応が無い」と誤検知して強制終了してしまう
+    // 問題があったため、短い間隔でポーリングする方式に変更した。
+    pollTimer = setInterval(function () {
+      fetch(
+        "/__calltracer__/poll?session_id=" + encodeURIComponent(sessionId)
+      )
+        .then(function (res) {
+          if (!res.ok) {
+            throw new Error("poll failed: " + res.status);
+          }
+          return res.json();
+        })
+        .then(function (data) {
+          setStatus("connected", "ポーリング中: /__calltracer__/poll");
+          (data.events || []).forEach(renderEvent);
+        })
+        .catch(function () {
+          setStatus("disconnected", "ポーリングに失敗しました(再試行します)");
+        });
+    }, 1000);
+  }
+
+  function stopPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
   }
 
   function setStatus(cls, text) {

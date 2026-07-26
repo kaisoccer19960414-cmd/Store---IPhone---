@@ -44,6 +44,22 @@ class EventBus:
         """ブロッキングで1件取り出す。timeout秒待っても無ければqueue.Emptyを送出する。"""
         return self._get_queue(session_id).get(timeout=timeout)
 
+    def drain_nowait(self, session_id: str) -> list:
+        """溜まっているイベントを、ブロッキングせずに全部取り出してリストで返す。
+
+        SSEをやめてポーリング方式に切り替えた際に使う。Gunicornのsyncワーカーは
+        長時間ブロックする処理(SSEの待ち受け)があるとワーカーごと強制終了
+        されてしまう(WORKER TIMEOUT)ため、「一瞬で返る」この方式に統一する。
+        """
+        events = []
+        q = self._get_queue(session_id)
+        while True:
+            try:
+                events.append(q.get_nowait())
+            except queue.Empty:
+                break
+        return events
+
     def discard(self, session_id: str) -> None:
         """セッション終了時に、キューごと破棄する(メモリリーク防止)。"""
         with self._lock:

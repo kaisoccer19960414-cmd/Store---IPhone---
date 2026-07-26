@@ -130,26 +130,21 @@ def init_flask(
         event_bus.publish(session_id, body)
         return jsonify({"ok": True})
 
-    @bp.get("/stream")
-    def stream():
-        # 注意: ブラウザ標準のEventSource APIはカスタムヘッダーを送れないため、
-        # ここもis_adminの再チェックはできない。session_idは
-        # /session/start(is_adminで保護済み)を通過した管理者にしか
-        # 発行されない、推測不可能なトークンなので、これ自体を通行証として扱う。
+    @bp.get("/poll")
+    def poll():
+        # 注意: 以前はSSE(/stream)を使っていたが、Gunicornのsyncワーカーが
+        # 長時間ブロックする接続(SSE)を「反応が無い」と誤検知して
+        # ワーカーごと強制終了してしまう(WORKER TIMEOUT)ことが判明したため、
+        # 「一瞬で返るリクエストを短い間隔で繰り返す」ポーリング方式に変更した。
+        # ブラウザ標準のEventSourceと違い、fetch()なので後述の通り
+        # 通常のヘッダーも使えるが、既存の設計との一貫性のためセッション
+        # 有効性のみで判定する(is_adminの再チェックはしない)。
         session_id = request.args.get("session_id")
         if not session_registry.is_active(session_id):
             return jsonify({"error": "invalid session"}), 403
-
-        def generate():
-            while session_registry.is_active(session_id):
-                try:
-                    event = event_bus.get(session_id, timeout=15)
-                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-                except Exception:
-                    # timeout時は接続維持のためのコメント行を送る(SSEの作法)
-                    yield ": keep-alive\n\n"
-
-        return Response(generate(), mimetype="text/event-stream")
+        session_registry.touch(session_id)
+        events = event_bus.drain_nowait(session_id)
+        return jsonify({"events": events})
 
     app.register_blueprint(bp)
 

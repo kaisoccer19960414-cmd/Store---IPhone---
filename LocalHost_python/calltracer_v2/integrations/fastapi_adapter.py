@@ -28,13 +28,12 @@ CallTracerを組み込むための統合レイヤー。Flask版(flask_adapter.py
 
 from __future__ import annotations
 
-import json
 import os
 from typing import Awaitable, Callable, Optional, Union
 
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response, StreamingResponse
+from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse, Response
 from starlette.routing import Route
 
 from ..core.event_bus import EventBus
@@ -119,27 +118,18 @@ def init_fastapi(
         event_bus.publish(session_id, body)
         return JSONResponse({"ok": True})
 
-    async def stream(request: Request) -> Response:
+    async def poll(request: Request) -> Response:
+        # Flask版と同じ理由(Gunicorn等のsyncワーカーが長時間ブロックする
+        # 接続を誤検知して強制終了する問題)で、SSEではなくポーリング方式にする。
+        # FastAPI/Uvicornの非同期ワーカーであればSSEも問題なく動く可能性が
+        # 高いが、Flask/Gunicorn構成と実装を共通化しておくため、こちらも
+        # 同じポーリング方式に統一する。
         session_id = request.query_params.get("session_id")
         if not session_registry.is_active(session_id):
             return JSONResponse({"error": "invalid session"}, status_code=403)
-
-        async def generate():
-            import asyncio
-
-            loop = asyncio.get_event_loop()
-            while session_registry.is_active(session_id):
-                try:
-                    # event_bus.get()は同期(queue.Queue)なので、
-                    # イベントループをブロックしないようexecutorで実行する
-                    event = await loop.run_in_executor(
-                        None, lambda: event_bus.get(session_id, 15)
-                    )
-                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-                except Exception:
-                    yield ": keep-alive\n\n"
-
-        return StreamingResponse(generate(), media_type="text/event-stream")
+        session_registry.touch(session_id)
+        events = event_bus.drain_nowait(session_id)
+        return JSONResponse({"events": events})
 
     prefix = url_prefix.rstrip("/")
     app.router.routes.extend(
@@ -149,7 +139,7 @@ def init_fastapi(
             Route(f"{prefix}/session/start", session_start, methods=["POST"]),
             Route(f"{prefix}/session/stop", session_stop, methods=["POST"]),
             Route(f"{prefix}/events", events, methods=["POST"]),
-            Route(f"{prefix}/stream", stream, methods=["GET"]),
+            Route(f"{prefix}/poll", poll, methods=["GET"]),
         ]
     )
 

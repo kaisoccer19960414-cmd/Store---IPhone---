@@ -94,6 +94,24 @@
       (config && config.method) || (resource && resource.method) || "GET";
     const callId = "js_" + Date.now() + "_" + Math.random().toString(36).slice(2);
 
+    // 重要: このリクエスト自体にも X-CallTracer-Session ヘッダーを付ける。
+    // これが無いと、バックエンド側(before_request)がこのリクエストを
+    // 「管理者が見ているセッション」と認識できず、Python側のトレースが
+    // 一切有効化されない(/__calltracer__/events への報告だけでは、
+    // JS側の記録しか残らない)。
+    const mergedConfig = Object.assign({}, config || {});
+    if (mergedConfig.headers instanceof Headers) {
+      const newHeaders = new Headers(mergedConfig.headers);
+      newHeaders.set("X-CallTracer-Session", sessionId);
+      mergedConfig.headers = newHeaders;
+    } else {
+      mergedConfig.headers = Object.assign(
+        {},
+        mergedConfig.headers || {},
+        { "X-CallTracer-Session": sessionId }
+      );
+    }
+
     report({
       id: callId,
       timestamp: Date.now() / 1000,
@@ -103,7 +121,7 @@
       payload: { url: url, method: method, call_id: callId },
     });
 
-    const promise = originalFetch.apply(this, args);
+    const promise = originalFetch.call(this, resource, mergedConfig);
 
     promise.then(
       function (response) {

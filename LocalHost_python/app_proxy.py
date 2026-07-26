@@ -11,6 +11,10 @@ import datetime
 import secrets as secrets_module
 import requests
 
+#calltracer_v2呼び出しコード
+
+from calltracer_v2 import init_flask
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -25,6 +29,14 @@ TOKEN_MAX_AGE = 60 * 60 * 24 * 7  # トークンの有効期限: 7日間(秒)
 LOGIN_ATTEMPTS = {}
 MAX_ATTEMPTS = 5          # この回数間違えたら
 LOCKOUT_SECONDS = 300     # 5分間ロックする
+
+#calltarcer_v2呼び出し関数コード
+def is_admin(request):  
+    auth = request.headers.get("Authorization", "")
+    token = auth.removeprefix("Bearer ")
+    return verify_token(token)
+
+init_flask(app, is_admin=is_admin)
 
 
 def is_locked_out(ip):
@@ -70,7 +82,7 @@ SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')
 
 SUPABASE_HEADERS = {
     'apikey': SUPABASE_SERVICE_KEY,
-    'Authorization': f'Bearer {SUPABASE_SERVICE_KEY}',
+    'Authorization': f'Bearer {SUPABASE_SERVICE_KEY}', 
     'Content-Type': 'application/json',
 }
 
@@ -388,4 +400,5 @@ def get_stats_meta():
 
 
 if __name__ == '__main__':
+
     app.run(debug=True, port=5000)

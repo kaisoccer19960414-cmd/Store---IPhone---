@@ -1,0 +1,94 @@
+/*
+ * inject.js
+ * =========
+ * 対象アプリの通常ページに1行(<script src="/__calltracer__/inject.js">)
+ * 追加するだけで、そのページのfetch()をCallTracerのタイムラインに
+ * リアルタイムで報告できるようにするスクリプト。
+ *
+ * 設計方針:
+ * - localStorageの "calltracer_session_id" を見て、値がある時だけ
+ *   報告を行う(この値は、管理者がViewer画面でセッションを開始した時に
+ *   セットされる。同一オリジンなのでタブ間で共有される)。
+ * - このスクリプト自体は認証を一切行わない。認証は既に
+ *   /session/start の時点(is_adminチェック)で完了しており、
+ *   ここではその結果である session_id を運ぶだけ。
+ * - fetch呼び出し自体をブロックしないよう、報告はfire-and-forgetで行う。
+ */
+(function () {
+  const SESSION_KEY = "calltracer_session_id";
+  const originalFetch = window.fetch;
+
+  function report(event) {
+    const sessionId = localStorage.getItem(SESSION_KEY);
+    if (!sessionId) {
+      return;
+    }
+    // 自分自身の報告(POST /__calltracer__/events)まで再度フックしてしまわないよう、
+    // 必ずoriginalFetchを使う。
+    originalFetch("/__calltracer__/events", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CallTracer-Session": sessionId,
+      },
+      body: JSON.stringify(event),
+    }).catch(function () {
+      /* Viewerが閉じている等で失敗しても、対象アプリの動作に影響させない */
+    });
+  }
+
+  window.fetch = function (...args) {
+    const sessionId = localStorage.getItem(SESSION_KEY);
+    if (!sessionId) {
+      // セッションが無ければ、素通しするだけ(オーバーヘッドもほぼ無い)
+      return originalFetch.apply(this, args);
+    }
+
+    const [resource, config] = args;
+    const url =
+      typeof resource === "string"
+        ? resource
+        : resource && resource.url
+        ? resource.url
+        : String(resource);
+    const method =
+      (config && config.method) || (resource && resource.method) || "GET";
+    const callId = "js_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+
+    report({
+      id: callId,
+      timestamp: Date.now() / 1000,
+      source: "javascript",
+      type: "fetch_start",
+      depth: 0,
+      payload: { url: url, method: method, call_id: callId },
+    });
+
+    const promise = originalFetch.apply(this, args);
+
+    promise.then(
+      function (response) {
+        report({
+          id: callId + "_end",
+          timestamp: Date.now() / 1000,
+          source: "javascript",
+          type: "fetch_end",
+          depth: 0,
+          payload: { url: url, status: response.status, call_id: callId },
+        });
+      },
+      function () {
+        report({
+          id: callId + "_end",
+          timestamp: Date.now() / 1000,
+          source: "javascript",
+          type: "fetch_end",
+          depth: 0,
+          payload: { url: url, status: null, call_id: callId, error: true },
+        });
+      }
+    );
+
+    return promise;
+  };
+})();

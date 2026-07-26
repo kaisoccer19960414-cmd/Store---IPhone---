@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>CallTracer Viewer</title>
+<style>
+  body {
+    font-family: monospace;
+    background: #1e1e1e;
+    color: #ddd;
+    margin: 0;
+    padding: 0;
+  }
+  #setup {
+    padding: 16px;
+    background: #2a2a2a;
+    border-bottom: 1px solid #444;
+  }
+  #setup input {
+    width: 360px;
+    padding: 6px;
+    font-family: monospace;
+  }
+  #setup button {
+    padding: 6px 14px;
+    margin-left: 6px;
+  }
+  #status {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  #status.connected { color: #7CFC00; }
+  #status.disconnected { color: #ff6b6b; }
+  #status.idle { color: #999; }
+
+  #timeline {
+    padding: 8px 10px;
+    white-space: pre;
+    line-height: 1.5;
+  }
+  .call { color: #61dafb; }
+  .return { color: #999; }
+  .depth-indent { color: #555; }
+  .source-javascript { color: #f7df1e; }
+  .error-row { color: #ff6b6b; }
+</style>
+</head>
+<body>
+
+<div id="setup">
+  <div id="status" class="idle">未開始</div>
+  <div style="margin-top: 8px;">
+    <label>
+      認証ヘッダーの値(例: <code>Bearer eyJhbGci...</code>)。
+      対象アプリの管理者ログインで取得したものをそのまま貼り付けてください。
+    </label><br>
+    <input id="auth-value" type="text" placeholder="Bearer ...">
+    <button id="start-btn">セッション開始</button>
+    <button id="stop-btn" disabled>セッション終了</button>
+  </div>
+  <div style="margin-top: 6px; font-size: 12px; color: #999;">
+    ヘッダー名は既定で <code>Authorization</code> です。別の名前を使っている場合は、
+    このページを開く前にURLへ <code>?auth_header=X-My-Header</code> を付けてください。
+  </div>
+</div>
+
+<div id="timeline"></div>
+
+<script>
+  const AUTH_STORAGE_KEY = "calltracer_auth_value";
+  const SESSION_STORAGE_KEY = "calltracer_session_id";
+  const params = new URLSearchParams(location.search);
+  const authHeaderName = params.get("auth_header") || "Authorization";
+
+  const statusEl = document.getElementById("status");
+  const timelineEl = document.getElementById("timeline");
+  const authInput = document.getElementById("auth-value");
+  const startBtn = document.getElementById("start-btn");
+  const stopBtn = document.getElementById("stop-btn");
+
+  let eventSource = null;
+
+  // 前回入力した認証値を復元しておく(手間を減らすため)
+  const savedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+  if (savedAuth) {
+    authInput.value = savedAuth;
+  }
+
+  startBtn.addEventListener("click", startSession);
+  stopBtn.addEventListener("click", stopSession);
+
+  async function startSession() {
+    const authValue = authInput.value.trim();
+    if (!authValue) {
+      alert("認証ヘッダーの値を入力してください");
+      return;
+    }
+    localStorage.setItem(AUTH_STORAGE_KEY, authValue);
+
+    const headers = { "Content-Type": "application/json" };
+    headers[authHeaderName] = authValue;
+
+    let res;
+    try {
+      res = await fetch("/__calltracer__/session/start", {
+        method: "POST",
+        headers: headers,
+      });
+    } catch (e) {
+      setStatus("disconnected", "通信エラー: " + e);
+      return;
+    }
+
+    if (!res.ok) {
+      setStatus("disconnected", "セッション開始に失敗しました(HTTP " + res.status + ")。認証情報を確認してください。");
+      return;
+    }
+
+    const data = await res.json();
+    const sessionId = data.session_id;
+    localStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    authInput.disabled = true;
+
+    connectStream(sessionId);
+  }
+
+  async function stopSession() {
+    const sessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+    const authValue = localStorage.getItem(AUTH_STORAGE_KEY);
+
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+
+    if (sessionId && authValue) {
+      const headers = { "Content-Type": "application/json" };
+      headers[authHeaderName] = authValue;
+      try {
+        await fetch("/__calltracer__/session/stop", {
+          method: "POST",
+          headers: headers,
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+      } catch (e) {
+        /* 終了通知が失敗しても、ローカルの状態はクリアする */
+      }
+    }
+
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    authInput.disabled = false;
+    setStatus("idle", "終了しました");
+  }
+
+  function connectStream(sessionId) {
+    setStatus("connected", "接続中: /__calltracer__/stream");
+    eventSource = new EventSource(
+      "/__calltracer__/stream?session_id=" + encodeURIComponent(sessionId)
+    );
+    eventSource.onmessage = function (msg) {
+      let event;
+      try {
+        event = JSON.parse(msg.data);
+      } catch (e) {
+        return;
+      }
+      renderEvent(event);
+    };
+    eventSource.onerror = function () {
+      setStatus("disconnected", "切断されました(自動再接続を試みます)");
+    };
+  }
+
+  function setStatus(cls, text) {
+    statusEl.className = cls;
+    statusEl.textContent = text;
+  }
+
+  function renderEvent(event) {
+    const depth = event.depth || 0;
+    const indent = "  ".repeat(Math.max(depth - 1, 0));
+    const row = document.createElement("div");
+
+    if (event.type === "adapter_error") {
+      row.className = "error-row";
+      row.textContent = "[エラー] " + ((event.payload || {}).message || "");
+      timelineEl.appendChild(row);
+      window.scrollTo(0, document.body.scrollHeight);
+      return;
+    }
+
+    const isReturnLike = event.type === "return" || event.type === "fetch_end";
+    const sourceClass = event.source === "javascript" ? "source-javascript" : "";
+    const typeClass = isReturnLike ? "return" : "call";
+    const arrow = isReturnLike ? "<-" : "->";
+    const label = (event.type || "").toUpperCase();
+
+    const payload = event.payload || {};
+    const fn = payload.function || payload.url || "(unknown)";
+
+    let extra = "";
+    if (event.type === "call") {
+      extra = payload.args_summary ? "(" + payload.args_summary + ")" : "";
+    } else if (event.type === "fetch_start") {
+      extra = payload.method ? " " + payload.method : "";
+    } else if (event.type === "fetch_end") {
+      extra = payload.status !== undefined ? " status=" + payload.status : "";
+    }
+
+    const time = event.timestamp
+      ? new Date(event.timestamp * 1000).toISOString().substr(11, 12)
+      : "";
+
+    row.innerHTML =
+      '<span class="depth-indent">' + indent + "</span>" +
+      '<span class="' + typeClass + " " + sourceClass + '">' +
+      arrow + " " + label + " " + escapeHtml(fn) + escapeHtml(extra) +
+      "</span>" +
+      '  <span style="color:#666">[' + time + "]</span>";
+
+    timelineEl.appendChild(row);
+    window.scrollTo(0, document.body.scrollHeight);
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  // ページを離れる時、セッションを自動的に終了させる
+  // (Viewerタブを閉じ忘れて本番トレースが有効なまま残るのを防ぐ)
+  window.addEventListener("beforeunload", function () {
+    const sessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+    const authValue = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (sessionId && authValue) {
+      const headers = {};
+      headers[authHeaderName] = authValue;
+      navigator.sendBeacon &&
+        navigator.sendBeacon(
+          "/__calltracer__/session/stop",
+          new Blob([JSON.stringify({ session_id: sessionId })], { type: "application/json" })
+        );
+    }
+  });
+</script>
+
+</body>
+</html>

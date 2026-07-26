@@ -18,6 +18,23 @@
   const SESSION_KEY = "calltracer_session_id";
   const originalFetch = window.fetch;
 
+  // このスクリプト自身が読み込まれたURLから、CallTracerバックエンドの
+  // オリジン(スキーム+ホスト)を特定する。
+  // フロントエンドとバックエンドが別ドメイン(例: Vercel + Render)の場合、
+  // 相対パス("/__calltracer__/events"など)では「今開いているページの
+  // ドメイン」に対してリクエストしてしまい失敗するため、必ずこの方法で
+  // 絶対URLを組み立てる。
+  // 注意: document.currentScriptは、このスクリプトが同期的に実行されている
+  // 間しか有効ではないため、ここ(トップレベル)で必ず最初に取得しておくこと。
+  const _scriptEl = document.currentScript;
+  const BASE_URL = _scriptEl
+    ? new URL(_scriptEl.src).origin
+    : ""; // 取得できない場合は相対パスにフォールバック(同一オリジン構成向け)
+
+  function reportUrl() {
+    return BASE_URL + "/__calltracer__/events";
+  }
+
   function report(event) {
     const sessionId = localStorage.getItem(SESSION_KEY);
     if (!sessionId) {
@@ -25,7 +42,7 @@
     }
     // 自分自身の報告(POST /__calltracer__/events)まで再度フックしてしまわないよう、
     // 必ずoriginalFetchを使う。
-    originalFetch("/__calltracer__/events", {
+    originalFetch(reportUrl(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

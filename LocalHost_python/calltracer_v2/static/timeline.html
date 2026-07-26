@@ -62,6 +62,15 @@
     ヘッダー名は既定で <code>Authorization</code> です。別の名前を使っている場合は、
     このページを開く前にURLへ <code>?auth_header=X-My-Header</code> を付けてください。
   </div>
+  <div id="cross-origin-box" style="margin-top: 10px; display: none;">
+    <label>
+      対象アプリのURL(フロントエンドがバックエンドと別ドメインの場合、
+      最初の1回だけこのリンクから開いてください):
+    </label><br>
+    <input id="app-url" type="text" placeholder="https://your-frontend.example.com/"
+           style="width: 360px;">
+    <button id="open-app-btn">セッションID付きで開く</button>
+  </div>
 </div>
 
 <div id="timeline"></div>
@@ -88,6 +97,32 @@
 
   startBtn.addEventListener("click", startSession);
   stopBtn.addEventListener("click", stopSession);
+  document.getElementById("open-app-btn").addEventListener("click", openAppWithSession);
+
+  // 前回入力した対象アプリURLも復元しておく
+  const APP_URL_KEY = "calltracer_app_url";
+  const appUrlInput = document.getElementById("app-url");
+  const savedAppUrl = localStorage.getItem(APP_URL_KEY);
+  if (savedAppUrl) {
+    appUrlInput.value = savedAppUrl;
+  }
+
+  function openAppWithSession() {
+    const sessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (!sessionId) {
+      alert("先にセッションを開始してください");
+      return;
+    }
+    const appUrl = appUrlInput.value.trim();
+    if (!appUrl) {
+      alert("対象アプリのURLを入力してください");
+      return;
+    }
+    localStorage.setItem(APP_URL_KEY, appUrl);
+    const separator = appUrl.includes("?") ? "&" : "?";
+    const url = appUrl + separator + "calltracer_session=" + encodeURIComponent(sessionId);
+    window.open(url, "_blank");
+  }
 
   async function startSession() {
     const authValue = authInput.value.trim();
@@ -123,6 +158,7 @@
     startBtn.disabled = true;
     stopBtn.disabled = false;
     authInput.disabled = true;
+    document.getElementById("cross-origin-box").style.display = "block";
 
     connectStream(sessionId);
   }

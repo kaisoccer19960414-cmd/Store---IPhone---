@@ -19,17 +19,39 @@
   const originalFetch = window.fetch;
 
   // このスクリプト自身が読み込まれたURLから、CallTracerバックエンドの
-  // オリジン(スキーム+ホスト)を特定する。
-  // フロントエンドとバックエンドが別ドメイン(例: Vercel + Render)の場合、
-  // 相対パス("/__calltracer__/events"など)では「今開いているページの
-  // ドメイン」に対してリクエストしてしまい失敗するため、必ずこの方法で
-  // 絶対URLを組み立てる。
-  // 注意: document.currentScriptは、このスクリプトが同期的に実行されている
-  // 間しか有効ではないため、ここ(トップレベル)で必ず最初に取得しておくこと。
+  // オリジン(スキーム+ホスト)を特定する(フロント/バックエンドが
+  // 別ドメインの場合に、相対パスが誤って「今開いているページのドメイン」
+  // へ向いてしまうのを防ぐため)。
   const _scriptEl = document.currentScript;
-  const BASE_URL = _scriptEl
-    ? new URL(_scriptEl.src).origin
-    : ""; // 取得できない場合は相対パスにフォールバック(同一オリジン構成向け)
+  const BASE_URL = _scriptEl ? new URL(_scriptEl.src).origin : "";
+
+  // --- クロスオリジン対応: URLの ?calltracer_session=... を拾う ---
+  // localStorageはオリジン(ドメイン)ごとに別々に管理されるため、
+  // Viewer(バックエンドのドメイン)が保存したsession_idは、
+  // このスクリプトが動いている対象アプリのドメイン(フロントエンド)
+  // からはそのままでは見えない。
+  // そのため、Viewer側で「対象アプリをこのセッションID付きで開く」
+  // リンクを踏んでもらい、そのURLパラメータを読み取って、この
+  // ドメイン自身のlocalStorageに保存し直す(以後はこのURL無しでも使える)。
+  (function bootstrapSessionFromUrl() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = params.get("calltracer_session");
+      if (fromUrl) {
+        localStorage.setItem(SESSION_KEY, fromUrl);
+        // URLに残したままだと共有・再読み込み時に紛らわしいので消しておく
+        params.delete("calltracer_session");
+        const cleanedSearch = params.toString();
+        const newUrl =
+          window.location.pathname +
+          (cleanedSearch ? "?" + cleanedSearch : "") +
+          window.location.hash;
+        window.history.replaceState(null, "", newUrl);
+      }
+    } catch (e) {
+      /* URL操作に失敗しても致命的ではないので無視する */
+    }
+  })();
 
   function reportUrl() {
     return BASE_URL + "/__calltracer__/events";

@@ -76,6 +76,17 @@
     });
   }
 
+  function cleanStack(stack) {
+    // 1行目("Error"という文字列そのもの)と、inject.js自身のフレーム
+    // (fetchラッパー自体の呼び出し)を除いて、呼び出し元から見やすくする。
+    return stack
+      .split("\n")
+      .slice(1) // 先頭の"Error"行を除く
+      .filter((line) => !line.includes("inject.js"))
+      .map((line) => line.trim())
+      .join("\n");
+  }
+
   window.fetch = function (...args) {
     const sessionId = localStorage.getItem(SESSION_KEY);
     if (!sessionId) {
@@ -93,6 +104,13 @@
     const method =
       (config && config.method) || (resource && resource.method) || "GET";
     const callId = "js_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+
+    // 呼び出し経路(login→validate→fetch のような流れ)を、追加の関数
+    // ラップ無しで取得するために、この場でスタックトレースを採取する。
+    // 制約: ブラウザ依存の書式(Chrome/Edge=V8系を想定)、圧縮(minify)された
+    // コードでは関数名が意味不明になる、非同期(.then/setTimeout等)を
+    // 挟んだ経路は追えない、という3点は把握した上で使うこと。
+    const callStack = new Error().stack || "";
 
     // 重要: このリクエスト自体にも X-CallTracer-Session ヘッダーを付ける。
     // これが無いと、バックエンド側(before_request)がこのリクエストを
@@ -118,7 +136,12 @@
       source: "javascript",
       type: "fetch_start",
       depth: 0,
-      payload: { url: url, method: method, call_id: callId },
+      payload: {
+        url: url,
+        method: method,
+        call_id: callId,
+        call_stack: cleanStack(callStack),
+      },
     });
 
     const promise = originalFetch.call(this, resource, mergedConfig);

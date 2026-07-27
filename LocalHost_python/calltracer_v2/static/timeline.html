@@ -6,10 +6,10 @@
 <style>
   :root {
     /* ここの値を変えるだけで、対応する色を調整できます */
-    --color-return: #3bdd41;       /* RETURN行の色 */
-    --color-js-source: #fae441;    /* JavaScript由来の行の色 */
-    --color-note-text: #faf8f8;       /* 折り畳み解説文(Supabase解説など)の文字色 */
-    --color-note-summary: #fff7f7;    /* 折り畳みの見出し(▷部分)の色 */
+    --color-return: #46be4a;       /* RETURN行の色 */
+    --color-js-source: #f7df1e;    /* JavaScript由来の行の色 */
+    --color-note-text: #ffffff;       /* 折り畳み解説文(Supabase解説など)の文字色 */
+    --color-note-summary: #fffdfd;    /* 折り畳みの見出し(▷部分)の色 */
   }
   body {
     font-family: monospace;
@@ -52,11 +52,11 @@
     color: var(--color-note-summary);
     font-size: 13px;
   }
-  .supabase-note summary:hover { color: #f5ebeb; }
+  .supabase-note summary:hover { color: #999; }
   .supabase-note-body {
     margin-left: 1.5em;
     color: var(--color-note-text);
-    white-space: pre-line;
+    white-space: pre-wrap;
   }
   .depth-indent { color: #555; }
   .source-javascript { color: #f7df1e; }

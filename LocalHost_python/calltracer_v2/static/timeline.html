@@ -40,6 +40,12 @@
   }
   .call { color: #61dafb; }
   .return { color: #4caf50; }
+  .supabase-note summary {
+    cursor: pointer;
+    color: #666;
+    font-size: 13px;
+  }
+  .supabase-note summary:hover { color: #999; }
   .depth-indent { color: #555; }
   .source-javascript { color: #f7df1e; }
   .error-row { color: #ff6b6b; }
@@ -272,6 +278,32 @@
       '  <span style="color:#666">[' + time + "]</span>";
 
     timelineEl.appendChild(row);
+
+    // requests経由でSupabase(PostgREST)へ通信している呼び出しの直後に、
+    // 「一般的に何が起きているか」の説明を折り畳み表示で挿入する。
+    // 注意: これは今回の実際の処理内容の記録ではなく、Supabase/PostgRESTが
+    // 一般的にどう動くかという固定の解説文であることを、表示上も明記する。
+    if (
+      event.type === "call" &&
+      payload.function === "request" &&
+      /supabase/i.test(payload.args_summary || "")
+    ) {
+      const details = document.createElement("details");
+      details.className = "supabase-note";
+      const summary = document.createElement("summary");
+      summary.textContent = "  ".repeat(depth) + "▷ Supabase内部で何が起きているか(一般解説)";
+      const body = document.createElement("div");
+      body.style.marginLeft = "1.5em";
+      body.style.color = "#888";
+      body.textContent =
+        "※ 実際の処理記録ではなく、一般的な仕組みの説明です: " +
+        "リクエストがSupabaseに到着 → PostgRESTがURLとHTTPメソッドを解析 → " +
+        "対応するSQLを組み立てる → PostgreSQLへSQLを送って実行 → " +
+        "実行結果を受け取る → HTTPレスポンスとして組み立てて返す";
+      details.appendChild(summary);
+      details.appendChild(body);
+      timelineEl.appendChild(details);
+    }
 
     // JS(fetch)が絡む1つの操作(FETCH_START〜FETCH_END)の区切りとして、
     // FETCH_ENDの直後に空白行を1行はさむ。これにより、連続する

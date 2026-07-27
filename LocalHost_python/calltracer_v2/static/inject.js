@@ -79,11 +79,15 @@
   function cleanStack(stack) {
     // 1行目("Error"という文字列そのもの)と、inject.js自身のフレーム
     // (fetchラッパー自体の呼び出し)を除いて、呼び出し元から見やすくする。
+    // Error.stackは「今実行中の場所」が先頭に来る順序(深い→浅い)なので、
+    // reverse()して「実際に呼ばれた順」(浅い→深い、つまり
+    // handleEdit→updateQuiz→localApiRequestのような時系列順)に並べ替える。
     return stack
       .split("\n")
       .slice(1) // 先頭の"Error"行を除く
       .filter((line) => !line.includes("inject.js"))
       .map((line) => line.trim())
+      .reverse()
       .join("\n");
   }
 

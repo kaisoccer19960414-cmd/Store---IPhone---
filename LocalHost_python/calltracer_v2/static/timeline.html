@@ -272,6 +272,16 @@
       '  <span style="color:#666">[' + time + "]</span>";
 
     timelineEl.appendChild(row);
+
+    // JS(fetch)が絡む1つの操作(FETCH_START〜FETCH_END)の区切りとして、
+    // FETCH_ENDの直後に空白行を1行はさむ。これにより、連続する
+    // fetch呼び出しがどこからどこまでで1セットかが見た目で分かりやすくなる。
+    if (event.type === "fetch_end") {
+      const spacer = document.createElement("div");
+      spacer.innerHTML = "&nbsp;";
+      timelineEl.appendChild(spacer);
+    }
+
     window.scrollTo(0, document.body.scrollHeight);
   }
 

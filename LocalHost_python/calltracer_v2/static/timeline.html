@@ -58,8 +58,19 @@
     color: var(--color-note-text);
     white-space: pre-wrap;
   }
+  .js-callstack-note summary {
+    cursor: pointer;
+    color: var(--color-js-source);
+    font-size: 13px;
+  }
+  .js-callstack-note summary:hover { opacity: 0.8; }
+  .js-callstack-note-body {
+    margin-left: 1.5em;
+    color: var(--color-js-source);
+    white-space: pre-wrap;
+  }
   .depth-indent { color: #555; }
-  .source-javascript { color: #f7df1e; }
+  .source-javascript { color: var(--color-js-source); }
   .error-row { color: #ff6b6b; }
 </style>
 </head>
@@ -296,11 +307,11 @@
     // 同期的な経路が(追加のJSコード変更なしに)見える。
     if (event.type === "fetch_start" && payload.call_stack) {
       const details = document.createElement("details");
-      details.className = "supabase-note";
+      details.className = "js-callstack-note";
       const summary = document.createElement("summary");
       summary.textContent = "  ".repeat(depth) + "▷ JS呼び出し経路";
       const body = document.createElement("div");
-      body.className = "supabase-note-body";
+      body.className = "js-callstack-note-body";
       body.textContent = payload.call_stack;
       details.appendChild(summary);
       details.appendChild(body);

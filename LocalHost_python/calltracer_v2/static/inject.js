@@ -148,4 +148,78 @@
 
     return promise;
   };
+
+  // --- クリックイベントの横取り ---
+  // fetchと同じ考え方で、「addEventListener("click", ...)」と
+  // 「element.onclick = ...」の2種類の登録方法を横取りする。
+  // 見えるのは「クリックされた」という事実だけで、その後のJS内部の
+  // 呼び出し階層(login→validate→createBodyなど)までは追えない。
+
+  function describeTarget(el) {
+    if (!el) return "(unknown)";
+    if (el.id) return "#" + el.id;
+    if (el.name) return "[name=" + el.name + "]";
+    if (el.className && typeof el.className === "string") {
+      return (el.tagName || "").toLowerCase() + "." + el.className.split(" ")[0];
+    }
+    return (el.tagName || "unknown").toLowerCase();
+  }
+
+  function reportClick(target) {
+    const sessionId = localStorage.getItem(SESSION_KEY);
+    if (!sessionId) return;
+    report({
+      id: "js_click_" + Date.now() + "_" + Math.random().toString(36).slice(2),
+      timestamp: Date.now() / 1000,
+      source: "javascript",
+      type: "click",
+      depth: 0,
+      payload: { target: target },
+    });
+  }
+
+  // ① addEventListener("click", fn) 方式の横取り
+  const originalAddEventListener = EventTarget.prototype.addEventListener;
+  EventTarget.prototype.addEventListener = function (type, listener, options) {
+    if (type === "click" && typeof listener === "function" && !listener.__calltracerWrapped) {
+      const target = this;
+      const wrapped = function (...args) {
+        reportClick(describeTarget(target));
+        return listener.apply(this, args);
+      };
+      wrapped.__calltracerWrapped = true;
+      return originalAddEventListener.call(this, type, wrapped, options);
+    }
+    return originalAddEventListener.call(this, type, listener, options);
+  };
+
+  // ② element.onclick = fn 方式の横取り
+  // GlobalEventHandlers.onclick は HTMLElement.prototype 上のアクセサ
+  // (getter/setter)として定義されているため、そのsetterだけを差し替える。
+  try {
+    const onclickDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "onclick"
+    );
+    if (onclickDescriptor && onclickDescriptor.set) {
+      Object.defineProperty(HTMLElement.prototype, "onclick", {
+        get: onclickDescriptor.get,
+        set: function (fn) {
+          if (typeof fn === "function") {
+            const target = this;
+            const wrapped = function (...args) {
+              reportClick(describeTarget(target));
+              return fn.apply(this, args);
+            };
+            return onclickDescriptor.set.call(this, wrapped);
+          }
+          return onclickDescriptor.set.call(this, fn);
+        },
+        configurable: true,
+      });
+    }
+  } catch (e) {
+    /* 環境によってはonclickの差し替えができない場合があるが、
+       致命的ではないので無視する(addEventListener側は引き続き効く) */
+  }
 })();

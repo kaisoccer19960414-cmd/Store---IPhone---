@@ -238,7 +238,18 @@
         })
         .then(function (data) {
           setStatus("connected", "ポーリング中: /__calltracer__/poll");
-          (data.events || []).forEach(renderEvent);
+          // 1回のpollで届いた複数イベントは、ネットワークの遅延などで
+          // 「発生した順」と「届いた順」がズレることがある。CLICKや
+          // fetch_startの報告(/__calltracer__/events)は独立した通信なので、
+          // Python側の処理より届くのが遅れることがある。
+          // timestamp(ブラウザ/サーバーがイベント発生時に記録した時刻)で
+          // 並べ替えてから描画することで、同じpoll内では正しい時系列順にする。
+          // 注意: 既に画面へ描画済みの行を後から差し込むことはしないため、
+          // 1秒(ポーリング間隔)を超えて遅れて届いた場合はズレが残る。
+          const events = (data.events || [])
+            .slice()
+            .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+          events.forEach(renderEvent);
         })
         .catch(function () {
           setStatus("disconnected", "ポーリングに失敗しました(再試行します)");

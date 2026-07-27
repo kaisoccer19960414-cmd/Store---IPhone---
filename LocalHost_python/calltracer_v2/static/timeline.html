@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <title>CallTracer Viewer</title>
 <style>
+  :root {
+    /* ここの値を変えるだけで、対応する色を調整できます */
+    --color-return: #3bdd41;       /* RETURN行の色 */
+    --color-js-source: #fae441;    /* JavaScript由来の行の色 */
+    --color-note-text: #faf8f8;       /* 折り畳み解説文(Supabase解説など)の文字色 */
+    --color-note-summary: #fff7f7;    /* 折り畳みの見出し(▷部分)の色 */
+  }
   body {
     font-family: monospace;
     background: #1e1e1e;
@@ -39,13 +46,18 @@
     line-height: 1.5;
   }
   .call { color: #61dafb; }
-  .return { color: #53e258; }
+  .return { color: var(--color-return); }
   .supabase-note summary {
     cursor: pointer;
-    color: #666;
+    color: var(--color-note-summary);
     font-size: 13px;
   }
-  .supabase-note summary:hover { color: #a393a257; }
+  .supabase-note summary:hover { color: #f5ebeb; }
+  .supabase-note-body {
+    margin-left: 1.5em;
+    color: var(--color-note-text);
+    white-space: pre-line;
+  }
   .depth-indent { color: #555; }
   .source-javascript { color: #f7df1e; }
   .error-row { color: #ff6b6b; }
@@ -293,22 +305,20 @@
       const summary = document.createElement("summary");
       summary.textContent = "  ".repeat(depth) + "▷ Supabase内部で何が起きているか(一般解説)";
       const body = document.createElement("div");
-      body.style.marginLeft = "1.5em";
-      body.style.color = "#888";
-      body.style.whiteSpace = "pre-line";
+      body.className = "supabase-note-body";
       body.textContent =
-        "※ 実際の処理記録ではなく、一般的な仕組みの説明です\n\n" +
-         "リクエストがSupabaseに到着\n" +
-         "↓\n" +
-          "PostgRESTがURLとHTTPメソッドを解析\n" +
-         "↓\n" +
-         "対応するSQLを組み立てる\n" +
-         "↓\n" +
-         "PostgreSQLへSQLを送って実行\n" +
-         "↓\n" +
-         "実行結果を受け取る\n" +
-         "↓\n" +
-         "HTTPレスポンスとして組み立てて返す";
+        "        ※ 実際の処理記録ではなく、一般的な仕組みの説明です\n\n" +
+        "          リクエストがSupabaseに到着\n" +
+        "          ↓\n" +
+        "           PostgRESTがURLとHTTPメソッドを解析\n" +
+        "           ↓\n" +
+        "            対応するSQLを組み立てる\n" +
+        "            ↓\n" +
+        "             PostgreSQLへSQLを送って実行\n" +
+        "             ↓\n" +
+        "              実行結果を受け取る\n" +
+        "              ↓\n" +
+        "               HTTPレスポンスとして組み立てて返す";
       details.appendChild(summary);
       details.appendChild(body);
       timelineEl.appendChild(details);

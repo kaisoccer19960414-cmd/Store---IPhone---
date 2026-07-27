@@ -286,7 +286,7 @@
     if (
       event.type === "call" &&
       payload.function === "request" &&
-      /supabase/i.test(payload.args_summary || "")
+      /supabas/i.test(payload.args_summary || "")
     ) {
       const details = document.createElement("details");
       details.className = "supabase-note";

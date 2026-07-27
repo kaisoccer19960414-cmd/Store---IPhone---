@@ -239,16 +239,22 @@
         .then(function (data) {
           setStatus("connected", "ポーリング中: /__calltracer__/poll");
           // 1回のpollで届いた複数イベントは、ネットワークの遅延などで
-          // 「発生した順」と「届いた順」がズレることがある。CLICKや
-          // fetch_startの報告(/__calltracer__/events)は独立した通信なので、
-          // Python側の処理より届くのが遅れることがある。
-          // timestamp(ブラウザ/サーバーがイベント発生時に記録した時刻)で
-          // 並べ替えてから描画することで、同じpoll内では正しい時系列順にする。
-          // 注意: 既に画面へ描画済みの行を後から差し込むことはしないため、
-          // 1秒(ポーリング間隔)を超えて遅れて届いた場合はズレが残る。
+          // 「発生した順」と「届いた順」がズレることがある。
+          // CLICK/fetch_startの報告(/__calltracer__/events)はブラウザの
+          // 時計、Python側のCALL/RETURNはRenderサーバーの時計で記録されて
+          // いるため、この2つを生のtimestampだけで比較しても、マシン間の
+          // 時計のズレにより正しい順序にならないことがある。
+          // 一方、「JS(CLICK/FETCH_START) → Python処理 → JS(FETCH_END)」
+          // という因果関係の順序自体は、仕組み上絶対に崩れない。
+          // そこで、まず この因果関係グループで並べ、同じグループ内だけ
+          // timestampで細かく並べる、という2段階のソートにする。
           const events = (data.events || [])
             .slice()
-            .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            .sort(function (a, b) {
+              const rankDiff = eventCausalRank(a) - eventCausalRank(b);
+              if (rankDiff !== 0) return rankDiff;
+              return (a.timestamp || 0) - (b.timestamp || 0);
+            });
           events.forEach(renderEvent);
         })
         .catch(function () {
@@ -262,6 +268,16 @@
       clearInterval(pollTimer);
       pollTimer = null;
     }
+  }
+
+  function eventCausalRank(event) {
+    // JS(CLICK/FETCH_START) → Python(CALL/RETURN) → JS(FETCH_END) という、
+    // 仕組み上絶対に崩れない因果関係の順序を数値化する。数値が小さいほど先。
+    if (event.type === "click") return 0;
+    if (event.type === "fetch_start") return 1;
+    if (event.type === "fetch_end") return 3;
+    if (event.type === "adapter_error") return 0; // エラーは早めに出す
+    return 2; // Python側のcall/return
   }
 
   function setStatus(cls, text) {

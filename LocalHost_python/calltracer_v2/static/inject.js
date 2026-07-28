@@ -116,21 +116,28 @@
     // 挟んだ経路は追えない、という3点は把握した上で使うこと。
     const callStack = new Error().stack || "";
 
-    // 重要: このリクエスト自体にも X-CallTracer-Session ヘッダーを付ける。
-    // これが無いと、バックエンド側(before_request)がこのリクエストを
-    // 「管理者が見ているセッション」と認識できず、Python側のトレースが
-    // 一切有効化されない(/__calltracer__/events への報告だけでは、
-    // JS側の記録しか残らない)。
+    // 重要: このリクエスト自体に X-CallTracer-Session と
+    // X-CallTracer-Request-Id の両方のヘッダーを付ける。
+    // - Sessionが無いと、バックエンド側がこのリクエストを「管理者が見ている」
+    //   と認識できず、Python側のトレースが有効化されない。
+    // - Request-Id(このcallIdそのもの)が無いと、Python側のCALL/RETURN
+    //   イベントに「どのfetch呼び出しが引き起こしたか」の紐付けができず、
+    //   Viewer側で複数の操作が同時に発生した際にグループ化できない
+    //   (時刻だけを頼りに並べると、別マシンの時計のズレで順序が乱れる)。
     const mergedConfig = Object.assign({}, config || {});
     if (mergedConfig.headers instanceof Headers) {
       const newHeaders = new Headers(mergedConfig.headers);
       newHeaders.set("X-CallTracer-Session", sessionId);
+      newHeaders.set("X-CallTracer-Request-Id", callId);
       mergedConfig.headers = newHeaders;
     } else {
       mergedConfig.headers = Object.assign(
         {},
         mergedConfig.headers || {},
-        { "X-CallTracer-Session": sessionId }
+        {
+          "X-CallTracer-Session": sessionId,
+          "X-CallTracer-Request-Id": callId,
+        }
       );
     }
 
@@ -140,6 +147,7 @@
       source: "javascript",
       type: "fetch_start",
       depth: 0,
+      request_id: callId,
       payload: {
         url: url,
         method: method,
@@ -158,6 +166,7 @@
           source: "javascript",
           type: "fetch_end",
           depth: 0,
+          request_id: callId,
           payload: { url: url, status: response.status, call_id: callId },
         });
       },
@@ -168,6 +177,7 @@
           source: "javascript",
           type: "fetch_end",
           depth: 0,
+          request_id: callId,
           payload: { url: url, status: null, call_id: callId, error: true },
         });
       }

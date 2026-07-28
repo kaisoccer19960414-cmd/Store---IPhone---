@@ -238,24 +238,48 @@
         })
         .then(function (data) {
           setStatus("connected", "ポーリング中: /__calltracer__/poll");
-          // 1回のpollで届いた複数イベントは、ネットワークの遅延などで
-          // 「発生した順」と「届いた順」がズレることがある。
-          // CLICK/fetch_startの報告(/__calltracer__/events)はブラウザの
-          // 時計、Python側のCALL/RETURNはRenderサーバーの時計で記録されて
-          // いるため、この2つを生のtimestampだけで比較しても、マシン間の
-          // 時計のズレにより正しい順序にならないことがある。
-          // 一方、「JS(CLICK/FETCH_START) → Python処理 → JS(FETCH_END)」
-          // という因果関係の順序自体は、仕組み上絶対に崩れない。
-          // そこで、まず この因果関係グループで並べ、同じグループ内だけ
-          // timestampで細かく並べる、という2段階のソートにする。
-          const events = (data.events || [])
-            .slice()
-            .sort(function (a, b) {
-              const rankDiff = eventCausalRank(a) - eventCausalRank(b);
-              if (rankDiff !== 0) return rankDiff;
-              return (a.timestamp || 0) - (b.timestamp || 0);
-            });
-          events.forEach(renderEvent);
+          // 1回のpollで届いた複数イベントを、正しい順番に並べ替える。
+          //
+          // 単純にtimestampだけで比較すると、JS側(ブラウザの時計)と
+          // Python側(Renderサーバーの時計)がズレていて誤った順序になる
+          // ことがある。また、因果関係の優先順位(JS→Python→JS)だけで
+          // 束ねると、複数の別々の操作(例: 削除操作と、その後の一覧
+          // 再読み込み)が同じpoll内に混ざった時に、別々の操作のPython
+          // 処理同士が混線して表示されてしまう不具合があった。
+          //
+          // そこで、JS側が発行するrequest_id(fetch呼び出しごとの共通ID。
+          // X-CallTracer-Request-Idヘッダー経由でPython側にも伝わり、
+          // CALL/RETURNイベントに同じrequest_idが付与される)を使って、
+          // 「同じ操作に属するイベント」を1つのグループとしてまとめる。
+          // グループの並び位置は、そのグループのfetch_start(ブラウザの
+          // 時計、CLICKと同じ基準)の時刻を「アンカー」として使う。
+          // request_idが無いイベント(click単体、request_idの無い古い
+          // イベント等)は、自分自身のtimestampをアンカーにする。
+          const events = data.events || [];
+
+          const groupAnchor = {};
+          events.forEach(function (e) {
+            if (e.type === "fetch_start" && e.request_id) {
+              groupAnchor[e.request_id] = e.timestamp || 0;
+            }
+          });
+
+          function anchorOf(e) {
+            if (e.request_id && groupAnchor[e.request_id] !== undefined) {
+              return groupAnchor[e.request_id];
+            }
+            return e.timestamp || 0;
+          }
+
+          const sorted = events.slice().sort(function (a, b) {
+            const anchorDiff = anchorOf(a) - anchorOf(b);
+            if (anchorDiff !== 0) return anchorDiff;
+            const rankDiff = eventCausalRank(a) - eventCausalRank(b);
+            if (rankDiff !== 0) return rankDiff;
+            return (a.timestamp || 0) - (b.timestamp || 0);
+          });
+
+          sorted.forEach(renderEvent);
         })
         .catch(function () {
           setStatus("disconnected", "ポーリングに失敗しました(再試行します)");

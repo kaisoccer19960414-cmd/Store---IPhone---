@@ -48,6 +48,13 @@ _current_session: ContextVar[Optional[str]] = ContextVar(
 )
 # このリクエスト/タスク内での、現在の呼び出し深さ。
 _current_depth: ContextVar[int] = ContextVar("calltracer_current_depth", default=0)
+# JS側のfetch呼び出しが発行したID(X-CallTracer-Request-Idヘッダー由来)。
+# これがあると、Viewer側で「どのfetchが、どのPython処理を引き起こしたか」を
+# 時刻に頼らず確実に紐付けてグループ化できる。無ければNone(request_idを
+# 使わない、これまで通りの表示になるだけで、動作自体は変わらない)。
+_current_request_id: ContextVar[Optional[str]] = ContextVar(
+    "calltracer_current_request_id", default=None
+)
 
 
 class Tracer:
@@ -96,6 +103,15 @@ class Tracer:
     def unbind_session_from_current_context(self, token) -> None:
         _current_session.reset(token)
 
+    def bind_request_id_to_current_context(self, request_id: str):
+        """現在のリクエストコンテキストにrequest_id(JS側のfetch呼び出しID)を
+        紐付ける。戻り値はcontextvarのtoken(リクエスト終了時にresetへ渡すこと)。
+        """
+        return _current_request_id.set(request_id)
+
+    def unbind_request_id_from_current_context(self, token) -> None:
+        _current_request_id.reset(token)
+
     # ------------------------------------------------------------------
     # トレース本体
     # ------------------------------------------------------------------
@@ -127,6 +143,7 @@ class Tracer:
 
         depth = _current_depth.get() + 1
         depth_token = _current_depth.set(depth)
+        request_id = _current_request_id.get()
 
         call_id = f"evt_{next(self._id_counter):05d}"
         self._event_bus.publish(
@@ -137,6 +154,7 @@ class Tracer:
                 "source": "python",
                 "type": "call",
                 "depth": depth,
+                "request_id": request_id,
                 "payload": {
                     "function": frame.f_code.co_name,
                     "file": filename,
@@ -156,6 +174,7 @@ class Tracer:
                         "source": "python",
                         "type": "return",
                         "depth": depth,
+                        "request_id": request_id,
                         "payload": {
                             "function": frame.f_code.co_name,
                             "call_id": call_id,

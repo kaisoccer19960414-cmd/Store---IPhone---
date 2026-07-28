@@ -148,7 +148,7 @@ def init_flask(
 
     app.register_blueprint(bp)
 
-    # --- 全リクエストへのフック: セッションIDをcontextvarへ紐付ける ---
+    # --- 全リクエストへのフック: セッションID・request_idをcontextvarへ紐付ける ---
 
     @app.before_request
     def _calltracer_bind():
@@ -156,8 +156,19 @@ def init_flask(
         if session_registry.is_active(session_id):
             session_registry.touch(session_id)
             request._calltracer_token = tracer.bind_session_to_current_context(session_id)
+            # JS側のfetch呼び出しIDがあれば、それも紐付ける。これにより
+            # Viewer側で「どのfetchが、どのPython処理を引き起こしたか」を
+            # 時刻ではなくIDで確実にグループ化できる。無くても動作には
+            # 影響しない(request_id=Noneのまま記録されるだけ)。
+            request_id = request.headers.get("X-CallTracer-Request-Id")
+            request._calltracer_request_token = (
+                tracer.bind_request_id_to_current_context(request_id)
+                if request_id
+                else None
+            )
         else:
             request._calltracer_token = None
+            request._calltracer_request_token = None
 
     @app.teardown_request
     def _calltracer_unbind(exc=None):
@@ -166,3 +177,6 @@ def init_flask(
         token = getattr(req, "_calltracer_token", None)
         if token is not None:
             tracer.unbind_session_from_current_context(token)
+        request_token = getattr(req, "_calltracer_request_token", None)
+        if request_token is not None:
+            tracer.unbind_request_id_from_current_context(request_token)

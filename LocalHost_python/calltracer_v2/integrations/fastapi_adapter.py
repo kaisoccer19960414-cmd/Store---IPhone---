@@ -147,12 +147,18 @@ def init_fastapi(
     async def _calltracer_middleware(request: Request, call_next):
         session_id = request.headers.get("X-CallTracer-Session")
         token = None
+        request_token = None
         if session_registry.is_active(session_id):
             session_registry.touch(session_id)
             token = tracer.bind_session_to_current_context(session_id)
+            request_id = request.headers.get("X-CallTracer-Request-Id")
+            if request_id:
+                request_token = tracer.bind_request_id_to_current_context(request_id)
         try:
             response = await call_next(request)
         finally:
             if token is not None:
                 tracer.unbind_session_from_current_context(token)
+            if request_token is not None:
+                tracer.unbind_request_id_from_current_context(request_token)
         return response

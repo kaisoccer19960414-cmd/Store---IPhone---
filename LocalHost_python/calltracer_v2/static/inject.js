@@ -202,7 +202,7 @@
     return (el.tagName || "unknown").toLowerCase();
   }
 
-  function reportClick(target) {
+  function reportClick(target, registeredAt) {
     const sessionId = localStorage.getItem(SESSION_KEY);
     if (!sessionId) return;
     report({
@@ -211,8 +211,19 @@
       source: "javascript",
       type: "click",
       depth: 0,
-      payload: { target: target },
+      payload: { target: target, registered_at: registeredAt || "" },
     });
+  }
+
+  function captureRegistrationSite() {
+    // addEventListener/onclick が「呼ばれた瞬間」のスタックから、
+    // inject.js自身のフレームを除いた最初の行(=実際に登録処理を
+    // 書いたファイル)を1行だけ取り出す。
+    // 注意: これは「イベントリスナーを登録した場所」であって、
+    // 必ずしも「そのハンドラ関数自体が定義されているファイル」とは
+    // 限らない(別ファイルで定義された関数を渡しているだけの場合もある)。
+    const lines = cleanStack(new Error().stack || "").split("\n");
+    return lines.length > 0 ? lines[lines.length - 1] : "";
   }
 
   // ① addEventListener("click", fn) 方式の横取り
@@ -220,8 +231,12 @@
   EventTarget.prototype.addEventListener = function (type, listener, options) {
     if (type === "click" && typeof listener === "function" && !listener.__calltracerWrapped) {
       const target = this;
+      // 「addEventListenerが呼ばれた瞬間」(=登録処理を書いたファイル)を
+      // ここで採取しておく。クリックされた瞬間ではファイル情報が
+      // 取れないため(ハンドラ自体がまだ実行開始していないため)。
+      const registeredAt = captureRegistrationSite();
       const wrapped = function (...args) {
-        reportClick(describeTarget(target));
+        reportClick(describeTarget(target), registeredAt);
         return listener.apply(this, args);
       };
       wrapped.__calltracerWrapped = true;
@@ -244,8 +259,9 @@
         set: function (fn) {
           if (typeof fn === "function") {
             const target = this;
+            const registeredAt = captureRegistrationSite();
             const wrapped = function (...args) {
-              reportClick(describeTarget(target));
+              reportClick(describeTarget(target), registeredAt);
               return fn.apply(this, args);
             };
             return onclickDescriptor.set.call(this, wrapped);

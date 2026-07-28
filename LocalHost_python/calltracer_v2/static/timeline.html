@@ -343,10 +343,19 @@
     // Python側のCALLイベントには、どのファイルで定義された関数かという
     // 情報(payload.file、フルパス)が付いているので、ファイル名だけを
     // 抜き出して薄く追記する(フルパスは長すぎて読みにくいため)。
+    // clickイベントには、代わりにpayload.registered_at
+    // (「at 関数名 (URL:行:列)」という形式の1行、addEventListener等が
+    // 呼ばれた時点のスタックから採取したもの)からURL部分を抜き出す。
     let fileLabel = "";
     if (event.type === "call" && event.source !== "javascript" && payload.file) {
       const parts = payload.file.split(/[\\/]/); // Windows/Unix両方のパス区切りに対応
       fileLabel = "  [" + parts[parts.length - 1] + "]";
+    } else if (event.type === "click" && payload.registered_at) {
+      const match = payload.registered_at.match(/\(([^)]+)\)/);
+      const urlPart = match ? match[1] : payload.registered_at;
+      const fileWithLineCol = urlPart.split("/").pop() || urlPart;
+      const fileOnly = fileWithLineCol.split(":")[0];
+      if (fileOnly) fileLabel = "  [" + fileOnly + "]";
     }
 
     const time = event.timestamp

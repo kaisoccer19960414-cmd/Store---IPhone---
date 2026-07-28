@@ -186,11 +186,18 @@
     return promise;
   };
 
-  // --- クリックイベントの横取り ---
-  // fetchと同じ考え方で、「addEventListener("click", ...)」と
-  // 「element.onclick = ...」の2種類の登録方法を横取りする。
-  // 見えるのは「クリックされた」という事実だけで、その後のJS内部の
-  // 呼び出し階層(login→validate→createBodyなど)までは追えない。
+  // --- イベントの横取り(click / change / submit) ---
+  // fetchと同じ考え方で、「addEventListener(type, ...)」と
+  // 「element.on〇〇 = ...」の2種類の登録方法を横取りする。
+  // 見えるのは「そのイベントが発生した」という事実だけで、その後の
+  // JS内部の呼び出し階層(login→validate→createBodyなど)までは追えない。
+  //
+  // 対象イベントをこの3種類に絞っているのは:
+  // - mouseover等は発火頻度が高すぎてタイムラインがノイズだらけになる
+  // - input/keydownは打鍵のたびに発火し、同様にノイズが多い
+  // 一方 click/change/submit はユーザーの意図的な操作の区切りとして
+  // ちょうどよい頻度なので、実用上の価値と見やすさのバランスが良い。
+  const TRACKED_EVENT_TYPES = ["click", "change", "submit"];
 
   function describeTarget(el) {
     if (!el) return "(unknown)";
@@ -202,21 +209,21 @@
     return (el.tagName || "unknown").toLowerCase();
   }
 
-  function reportClick(target, registeredAt) {
+  function reportUiEvent(eventType, target, registeredAt) {
     const sessionId = localStorage.getItem(SESSION_KEY);
     if (!sessionId) return;
     report({
-      id: "js_click_" + Date.now() + "_" + Math.random().toString(36).slice(2),
+      id: "js_" + eventType + "_" + Date.now() + "_" + Math.random().toString(36).slice(2),
       timestamp: Date.now() / 1000,
       source: "javascript",
-      type: "click",
+      type: eventType, // "click" | "change" | "submit"
       depth: 0,
       payload: { target: target, registered_at: registeredAt || "" },
     });
   }
 
   function captureRegistrationSite() {
-    // addEventListener/onclick が「呼ばれた瞬間」のスタックから、
+    // addEventListener/onXXX が「呼ばれた瞬間」のスタックから、
     // inject.js自身のフレームを除いた最初の行(=実際に登録処理を
     // 書いたファイル)を1行だけ取り出す。
     // 注意: これは「イベントリスナーを登録した場所」であって、
@@ -226,17 +233,21 @@
     return lines.length > 0 ? lines[lines.length - 1] : "";
   }
 
-  // ① addEventListener("click", fn) 方式の横取り
+  // ① addEventListener(type, fn) 方式の横取り
   const originalAddEventListener = EventTarget.prototype.addEventListener;
   EventTarget.prototype.addEventListener = function (type, listener, options) {
-    if (type === "click" && typeof listener === "function" && !listener.__calltracerWrapped) {
+    if (
+      TRACKED_EVENT_TYPES.includes(type) &&
+      typeof listener === "function" &&
+      !listener.__calltracerWrapped
+    ) {
       const target = this;
       // 「addEventListenerが呼ばれた瞬間」(=登録処理を書いたファイル)を
-      // ここで採取しておく。クリックされた瞬間ではファイル情報が
+      // ここで採取しておく。イベント発生の瞬間ではファイル情報が
       // 取れないため(ハンドラ自体がまだ実行開始していないため)。
       const registeredAt = captureRegistrationSite();
       const wrapped = function (...args) {
-        reportClick(describeTarget(target), registeredAt);
+        reportUiEvent(type, describeTarget(target), registeredAt);
         return listener.apply(this, args);
       };
       wrapped.__calltracerWrapped = true;
@@ -245,34 +256,37 @@
     return originalAddEventListener.call(this, type, listener, options);
   };
 
-  // ② element.onclick = fn 方式の横取り
-  // GlobalEventHandlers.onclick は HTMLElement.prototype 上のアクセサ
-  // (getter/setter)として定義されているため、そのsetterだけを差し替える。
-  try {
-    const onclickDescriptor = Object.getOwnPropertyDescriptor(
-      HTMLElement.prototype,
-      "onclick"
-    );
-    if (onclickDescriptor && onclickDescriptor.set) {
-      Object.defineProperty(HTMLElement.prototype, "onclick", {
-        get: onclickDescriptor.get,
-        set: function (fn) {
-          if (typeof fn === "function") {
-            const target = this;
-            const registeredAt = captureRegistrationSite();
-            const wrapped = function (...args) {
-              reportClick(describeTarget(target), registeredAt);
-              return fn.apply(this, args);
-            };
-            return onclickDescriptor.set.call(this, wrapped);
-          }
-          return onclickDescriptor.set.call(this, fn);
-        },
-        configurable: true,
-      });
+  // ② element.onclick / onchange / onsubmit = fn 方式の横取り
+  // GlobalEventHandlers上のアクセサ(getter/setter)として定義されている
+  // ため、対象の3種類それぞれについてsetterだけを差し替える。
+  TRACKED_EVENT_TYPES.forEach(function (eventType) {
+    const propName = "on" + eventType;
+    try {
+      const descriptor = Object.getOwnPropertyDescriptor(
+        HTMLElement.prototype,
+        propName
+      );
+      if (descriptor && descriptor.set) {
+        Object.defineProperty(HTMLElement.prototype, propName, {
+          get: descriptor.get,
+          set: function (fn) {
+            if (typeof fn === "function") {
+              const target = this;
+              const registeredAt = captureRegistrationSite();
+              const wrapped = function (...args) {
+                reportUiEvent(eventType, describeTarget(target), registeredAt);
+                return fn.apply(this, args);
+              };
+              return descriptor.set.call(this, wrapped);
+            }
+            return descriptor.set.call(this, fn);
+          },
+          configurable: true,
+        });
+      }
+    } catch (e) {
+      /* 環境によってはonXXXの差し替えができない場合があるが、
+         致命的ではないので無視する(addEventListener側は引き続き効く) */
     }
-  } catch (e) {
-    /* 環境によってはonclickの差し替えができない場合があるが、
-       致命的ではないので無視する(addEventListener側は引き続き効く) */
-  }
+  });
 })();

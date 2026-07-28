@@ -279,7 +279,7 @@ def delete_quiz(quiz_id):
         headers=SUPABASE_HEADERS,
         params={'id': f'eq.{quiz_id}'}
     )
-    return jsonify({'deleted': quiz_id}), 200
+    return jsonify({'deleted': quiz_id}), res.status_code
 
 @app.route('/prefectures', methods=['GET'])
 def get_all_prefectures():

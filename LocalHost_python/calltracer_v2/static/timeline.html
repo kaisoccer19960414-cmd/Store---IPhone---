@@ -340,6 +340,15 @@
       extra = payload.status !== undefined ? " status=" + payload.status : "";
     }
 
+    // Python側のCALLイベントには、どのファイルで定義された関数かという
+    // 情報(payload.file、フルパス)が付いているので、ファイル名だけを
+    // 抜き出して薄く追記する(フルパスは長すぎて読みにくいため)。
+    let fileLabel = "";
+    if (event.type === "call" && event.source !== "javascript" && payload.file) {
+      const parts = payload.file.split(/[\\/]/); // Windows/Unix両方のパス区切りに対応
+      fileLabel = "  [" + parts[parts.length - 1] + "]";
+    }
+
     const time = event.timestamp
       ? new Date(event.timestamp * 1000).toISOString().substr(11, 12)
       : "";
@@ -349,6 +358,7 @@
       '<span class="' + typeClass + " " + sourceClass + '">' +
       arrow + " " + label + " " + escapeHtml(fn) + escapeHtml(extra) +
       "</span>" +
+      '<span style="color:#555">' + escapeHtml(fileLabel) + "</span>" +
       '  <span style="color:#666">[' + time + "]</span>";
 
     timelineEl.appendChild(row);

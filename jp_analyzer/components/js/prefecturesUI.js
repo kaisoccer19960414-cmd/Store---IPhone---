@@ -10,20 +10,6 @@ const INDICATOR_LABELS = {
   deaths: '死亡数',
   natural_change: '自然増減数',
   social_change: '社会増減数',
-  divorces: '離婚件数',
-    total_area: '総面積',
-  forest_area: '森林面積',
-  avg_temperature: '平均気温',
-  max_temperature: '最高気温',
-  min_temperature: '最低気温',
-  sunny_days: '快晴日数',
-  cloudy_days: '曇天日数',
-  rain_days: '降水日数',
-  job_availability_ratio: '有効求人倍率',
-  labor_force_population: '労働力人口（国勢調査）',
-  primary_industry_workers: '第１次産業就業者数',
-  secondary_industry_workers: '第２次産業就業者数',
-  tertiary_industry_workers: '第３次産業就業者数',
 };
 
 function indicatorLabel(code) {
@@ -198,6 +184,14 @@ function populateYearOptions(indicator) {
   }
 }
 
+// カテゴリ(大分類)の表示順。ここに無いカテゴリは末尾の「分類未設定」にまとめる。
+const CATEGORY_ORDER = [
+  '人口・世帯', '国土・気象', '労働・賃金', '農林水産業', '鉱工業', '商業・サービス業',
+  '企業・家計・経済', '住宅・土地・建設', 'エネルギー・水', '運輸・観光',
+  '情報通信・科学技術', '教育・文化・スポーツ', '行財政',
+];
+const UNCATEGORIZED_LABEL = '分類未設定';
+
 // DBに実際に入っているindicator/yearをここで取得してセレクトを組み立てる。
 // 新しいCSV(新しいindicator)を投入しても、ここは変更不要で自動的に反映される。
 export async function initSelectors() {
@@ -211,12 +205,30 @@ export async function initSelectors() {
     return;
   }
 
-  indicatorSelect.innerHTML = '';
+  // カテゴリごとにバケット分けする(statsMetaは指標名の昇順で来るので、バケット内の並びはそのまま活きる)
+  const buckets = new Map();
   statsMeta.forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m.indicator;
-    opt.textContent = m.unit ? `${indicatorLabel(m.indicator)}(${m.unit})` : indicatorLabel(m.indicator);
-    indicatorSelect.appendChild(opt);
+    const category = m.category || UNCATEGORIZED_LABEL;
+    if (!buckets.has(category)) buckets.set(category, []);
+    buckets.get(category).push(m);
+  });
+
+  const orderedCategories = [
+    ...CATEGORY_ORDER.filter(c => buckets.has(c)),
+    ...[...buckets.keys()].filter(c => !CATEGORY_ORDER.includes(c)),
+  ];
+
+  indicatorSelect.innerHTML = '';
+  orderedCategories.forEach(category => {
+    const group = document.createElement('optgroup');
+    group.label = category;
+    buckets.get(category).forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.indicator;
+      opt.textContent = m.unit ? `${indicatorLabel(m.indicator)}(${m.unit})` : indicatorLabel(m.indicator);
+      group.appendChild(opt);
+    });
+    indicatorSelect.appendChild(group);
   });
 
   const defaultMeta = statsMeta.find(m => m.indicator === currentIndicator) ?? statsMeta[0];

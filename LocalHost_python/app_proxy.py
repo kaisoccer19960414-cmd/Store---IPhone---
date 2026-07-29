@@ -11,10 +11,16 @@ import datetime
 import secrets as secrets_module
 import requests
 
+#calltracer_v2呼び出しコード-----------------------------------------------------
+
+from calltracer_v2 import init_flask
+
 load_dotenv()
 
 app = Flask(__name__)
 app.json.ensure_ascii = False
+#------------------------------------------------------------------------------------
+
 
 SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', 'dev-only-fallback-key')
 TOKEN_MAX_AGE = 60 * 60 * 24 * 7  # トークンの有効期限: 7日間(秒)
@@ -25,6 +31,24 @@ TOKEN_MAX_AGE = 60 * 60 * 24 * 7  # トークンの有効期限: 7日間(秒)
 LOGIN_ATTEMPTS = {}
 MAX_ATTEMPTS = 5          # この回数間違えたら
 LOCKOUT_SECONDS = 300     # 5分間ロックする
+
+
+
+#calltarcer_v2呼び出し関数コード------------------------------------------------------------
+def is_admin(request):  
+    auth = request.headers.get("Authorization", "")
+    token = auth.removeprefix("Bearer ")
+    return verify_token(token)
+
+init_flask(app,
+           is_admin=is_admin,
+           include_paths=[
+            app.root_path,
+            os.path.join(os.path.dirname(requests.__file__), "api.py"),
+    ],
+    )
+
+#---------------------------------------------------------------------------------------------
 
 
 def is_locked_out(ip):
@@ -70,7 +94,7 @@ SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')
 
 SUPABASE_HEADERS = {
     'apikey': SUPABASE_SERVICE_KEY,
-    'Authorization': f'Bearer {SUPABASE_SERVICE_KEY}',
+    'Authorization': f'Bearer {SUPABASE_SERVICE_KEY}', 
     'Content-Type': 'application/json',
 }
 
@@ -255,7 +279,7 @@ def delete_quiz(quiz_id):
         headers=SUPABASE_HEADERS,
         params={'id': f'eq.{quiz_id}'}
     )
-    return jsonify({'deleted': quiz_id}), 200
+    return jsonify({'deleted': quiz_id}), res.status_code
 
 @app.route('/prefectures', methods=['GET'])
 def get_all_prefectures():
@@ -317,10 +341,10 @@ def get_prefecture_stats():
     else:
         order_clause = f'value.{order}'
 
-    # indicator/unitは正規化によりprefecture_stats.indicator_id → indicators(name,unit)の
-    # 参照になったので、埋め込み(indicators!inner(name,unit))経由で扱う
+    # indicatorは正規化により prefecture_stats.indicator_id → indicators.name の
+    # 参照になったので、埋め込み(indicators!inner(name))経由で扱う
     params = {
-        'select': 'value,year,indicators!inner(name,unit),prefectures!inner(id,name,region_block)',
+        'select': 'value,year,unit,indicators!inner(name),prefectures!inner(id,name,region_block)',
         'order': order_clause,
     }
     if indicator:
@@ -341,13 +365,12 @@ def get_prefecture_stats():
     if res.status_code != 200:
         return jsonify(res.json()), res.status_code
 
-    # フロント側は item.indicator / item.unit をそのまま読む作りのままにしたいので、
-    # 埋め込みで返ってくる indicators.name / indicators.unit をここで平坦化しておく
+    # フロント側は item.indicator をそのまま読む作りのままにしたいので、
+    # 埋め込みで返ってくる indicators.name をここで平坦化しておく
     data = res.json()
     for row in data:
         embedded = row.pop('indicators', None)
         row['indicator'] = embedded['name'] if embedded else None
-        row['unit'] = embedded['unit'] if embedded else None
 
     return jsonify(data), 200
 
@@ -372,7 +395,7 @@ def get_stats_meta():
             f'{SUPABASE_URL}/rest/v1/stats_meta',
             headers=SUPABASE_HEADERS,
             params={
-                'select': 'indicator,unit,category,years',
+                'select': 'indicator,unit,years',
                 'order': 'indicator.asc',
                 'limit': page_size,
                 'offset': offset,
@@ -389,4 +412,5 @@ def get_stats_meta():
 
 
 if __name__ == '__main__':
+
     app.run(debug=True, port=5000)

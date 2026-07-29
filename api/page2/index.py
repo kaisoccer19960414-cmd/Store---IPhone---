@@ -334,6 +334,21 @@ async def check_page_exists(site_id: str, slug: str):
     return {"exists": len(response.data) > 0}
 
 
+# --- ページ表示（site_id + slug指定。生成ページ内の内部リンク先） ---
+@app.get("/api/page2/site/{site_id}/{slug}", response_class=HTMLResponse)
+async def render_site_page(site_id: str, slug: str):
+    try:
+        response = supabase.table("generated_pages") \
+            .select("html_content") \
+            .eq("site_id", site_id) \
+            .eq("slug", slug) \
+            .single().execute()
+    except Exception:
+        raise HTTPException(status_code=404, detail="ページが見つかりません。")
+
+    return HTMLResponse(content=response.data["html_content"])
+
+
 # --- ページ表示（page_id指定） ---
 @app.get("/api/page2/render/{page_id}", response_class=HTMLResponse)
 async def render_page(page_id: str):

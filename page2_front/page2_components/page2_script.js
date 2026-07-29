@@ -312,7 +312,8 @@ async function generateAIPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail);
 
-        window.location.href = `/api/page2/render/${data.page_id}`;
+        window.open(`/api/page2/render/${data.page_id}`, "_blank");
+        statusEl.textContent = "生成完了！新しいタブで開きました。";
     } catch (e) {
         statusEl.textContent = `エラー: ${e.message}`;
     }

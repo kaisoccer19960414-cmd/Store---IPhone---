@@ -147,3 +147,64 @@ async def list_pages():
         raise HTTPException(status_code=500, detail=f"取得に失敗しました: {str(e)}")
 
     return {"status": "success", "pages": response.data}
+
+
+import json
+
+@app.post("/api/page2/generate-page")
+async def generate_page(request: GeneratePageRequest):
+    user_prompt = request.prompt.strip()
+    if not user_prompt:
+        raise HTTPException(status_code=400, detail="プロンプトが空です。")
+
+    site_id = str(uuid.uuid4())
+
+    system_instruction = f"""
+あなたはWebサイト生成エンジンです。以下のJSON形式で出力してください。
+
+{{
+  "html": "完全な1つのHTMLドキュメント(<!DOCTYPE html>から</html>まで)。内部リンクは href=\\"/api/page2/site/{site_id}/(スラッグ名)\\" の形式で書くこと(例: href=\\"/api/page2/site/{site_id}/careers\\")。CSSは<style>タグ内にインラインで含めること。",
+  "design_spec": {{
+    "color_palette": "使用した配色をコードで",
+    "font": "見出し・本文のフォント方針",
+    "tone": "サイト全体のトーン"
+  }},
+  "content_summary": "このページで扱っている内容の3行程度の要約"
+}}
+
+出力はこのJSONオブジェクトのみ。説明文やMarkdownのコードブロック記法は絶対に含めないこと。
+"""
+
+    try:
+        ai_response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=f"{system_instruction}\n\n【ユーザーの要望】\n{user_prompt}"
+        )
+        raw_text = ai_response.text
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gemini APIエラー: {str(e)}")
+
+    # コードブロック記法の除去
+    cleaned_text = re.sub(r"^```json\s*|```\s*$", "", raw_text.strip(), flags=re.MULTILINE).strip()
+
+    try:
+        parsed = json.loads(cleaned_text)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Geminiの出力をJSONとして解析できませんでした。")
+
+    page_id = str(uuid.uuid4())
+    try:
+        supabase.table("generated_pages").insert({
+            "id": page_id,
+            "site_id": site_id,
+            "slug": "index",
+            "prompt": user_prompt,
+            "html_content": parsed["html"],
+            "design_spec": parsed["design_spec"],
+            "content_summary": parsed["content_summary"],
+            "parent_slug": None
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"保存に失敗しました: {str(e)}")
+
+    return {"status": "success", "site_id": site_id, "page_id": page_id}

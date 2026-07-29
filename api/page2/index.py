@@ -133,3 +133,17 @@ async def render_page(page_id: str):
         raise HTTPException(status_code=404, detail="ページが見つかりません。")
 
     return HTMLResponse(content=response.data["html_content"])
+
+
+@app.get("/api/page2/list-pages")
+async def list_pages():
+    try:
+        response = supabase.table("generated_pages") \
+            .select("id, prompt, created_at") \
+            .order("created_at", desc=True) \
+            .limit(50) \
+            .execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"取得に失敗しました: {str(e)}")
+
+    return {"status": "success", "pages": response.data}

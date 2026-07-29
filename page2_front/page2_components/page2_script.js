@@ -317,3 +317,32 @@ async function generateAIPage() {
         statusEl.textContent = `エラー: ${e.message}`;
     }
 }
+
+
+async function loadPageHistory() {
+    const listEl = document.getElementById("page-history-list");
+    listEl.innerHTML = `<li class="status-msg">読み込み中...</li>`;
+
+    try {
+        const res = await fetch("/api/page2/list-pages");
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail);
+
+        if (data.pages.length === 0) {
+            listEl.innerHTML = `<li class="status-msg">まだ履歴がありません。</li>`;
+            return;
+        }
+
+        listEl.innerHTML = data.pages.map(page => {
+            const date = new Date(page.created_at).toLocaleString("ja-JP");
+            return `
+                <li>
+                    <a href="/api/page2/render/${page.id}" target="_blank">${page.prompt}</a>
+                    <span style="color: #888; font-size: 12px;">（${date}）</span>
+                </li>
+            `;
+        }).join("");
+    } catch (e) {
+        listEl.innerHTML = `<li class="status-msg">エラー: ${e.message}</li>`;
+    }
+}

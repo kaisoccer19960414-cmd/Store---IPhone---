@@ -80,3 +80,56 @@ async def summarize_lessons(request: SummaryRequest):
         "status": "success",
         "summary": summary_text
     }
+
+from fastapi.responses import HTMLResponse
+import re
+import uuid
+
+class GeneratePageRequest(BaseModel):
+    prompt: str
+
+@app.post("/api/page2/generate-page")
+async def generate_page(request: GeneratePageRequest):
+    user_prompt = request.prompt.strip()
+    if not user_prompt:
+        raise HTTPException(status_code=400, detail="プロンプトが空です。")
+
+    system_instruction = """
+あなたはHTML生成エンジンです。以下のルールを厳守してください：
+1. 出力は完全な1つのHTMLドキュメント（<!DOCTYPE html>から</html>まで）のみ。
+2. 説明文、前置き、Markdownのコードブロック記法（```html等）は絶対に含めない。
+3. CSSは<style>タグ内にインラインで含め、外部ファイルへの依存は避ける。
+"""
+    try:
+        ai_response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=f"{system_instruction}\n\n【ユーザーの要望】\n{user_prompt}"
+        )
+        raw_html = ai_response.text
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gemini APIエラー: {str(e)}")
+
+    # コードブロック記法の除去(念のため)
+    cleaned_html = re.sub(r"^```html\s*|```\s*$", "", raw_html.strip(), flags=re.MULTILINE).strip()
+
+    page_id = str(uuid.uuid4())
+    try:
+        supabase.table("generated_pages").insert({
+            "id": page_id,
+            "prompt": user_prompt,
+            "html_content": cleaned_html
+        }).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"保存に失敗しました: {str(e)}")
+
+    return {"status": "success", "page_id": page_id}
+
+
+@app.get("/api/page2/render/{page_id}", response_class=HTMLResponse)
+async def render_page(page_id: str):
+    try:
+        response = supabase.table("generated_pages").select("html_content").eq("id", page_id).single().execute()
+    except Exception:
+        raise HTTPException(status_code=404, detail="ページが見つかりません。")
+
+    return HTMLResponse(content=response.data["html_content"])

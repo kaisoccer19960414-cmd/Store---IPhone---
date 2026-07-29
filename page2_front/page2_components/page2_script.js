@@ -295,3 +295,25 @@ async function saveSummaryToSupabase(dateStr, summaryText) {
         }
     }
 }
+
+
+async function generateAIPage() {
+    const prompt = document.getElementById("ai-page-prompt").value.trim();
+    const statusEl = document.getElementById("ai-page-status");
+    if (!prompt) return;
+
+    statusEl.textContent = "生成中...";
+    try {
+        const res = await fetch("/api/page2/generate-page", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail);
+
+        window.location.href = `/api/page2/render/${data.page_id}`;
+    } catch (e) {
+        statusEl.textContent = `エラー: ${e.message}`;
+    }
+}

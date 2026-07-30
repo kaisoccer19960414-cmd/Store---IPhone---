@@ -156,7 +156,7 @@ textarea:focus{
 select{
   font-family: 'JetBrains Mono', monospace;
   font-size: 12.5px;
-  background: #0c0f18;
+  background: #1f1414;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -196,7 +196,7 @@ button{
 }
 #read-btn:hover, #fetch-all-btn:hover, #load-more-btn:hover{
   border-color: var(--cyan);
-  box-shadow: 0 0 14px rgba(34,211,238,0.2);
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.2);
 }
 #load-more-btn{
   margin-top: 14px;
@@ -205,7 +205,7 @@ button{
 /* ---- 出力エリア ---- */
 #output-area{
   margin-top: 16px;
-  background: #0c0f18;
+  background: #344885;
   border: 1px dashed var(--border);
   border-radius: 10px;
   padding: 16px;

@@ -96,12 +96,19 @@ async def summarize_lessons(request: SummaryRequest):
 # ============================================================
 class GeneratePageRequest(BaseModel):
     prompt: str
+    css_framework: str = "vanilla"
 
 
 class GenerateSitePageRequest(BaseModel):
     site_id: str
     slug: str
     referrer_slug: str
+
+
+CSS_FRAMEWORK_INSTRUCTIONS = {
+    "vanilla": "CSSは<style>タグ内にインラインで素のCSSとして記述すること。外部フレームワークは使用しないこと。",
+    "tailwind": "スタイリングにはTailwindCSSを使用すること。<head>内に<script src=\"https://cdn.tailwindcss.com\"></script>を含め、ユーティリティクラス中心のマークアップにすること。",
+}
 
 
 def clean_json_output(raw_text: str) -> str:
@@ -177,12 +184,14 @@ async def generate_page(request: GeneratePageRequest):
         raise HTTPException(status_code=400, detail="プロンプトが空です。")
 
     site_id = str(uuid.uuid4())
+    css_framework = request.css_framework if request.css_framework in CSS_FRAMEWORK_INSTRUCTIONS else "vanilla"
+    css_instruction = CSS_FRAMEWORK_INSTRUCTIONS[css_framework]
 
     system_instruction = f"""
 あなたはWebサイト生成エンジンです。以下のJSON形式で出力してください。
 
 {{
-  "html": "完全な1つのHTMLドキュメント(<!DOCTYPE html>から</html>まで)。内部リンクは href=\\"/api/page2/site/{site_id}/(スラッグ名)\\" の形式で書くこと(例: href=\\"/api/page2/site/{site_id}/careers\\")。CSSは<style>タグ内にインラインで含めること。",
+  "html": "完全な1つのHTMLドキュメント(<!DOCTYPE html>から</html>まで)。内部リンクは href=\\"/api/page2/site/{site_id}/(スラッグ名)\\" の形式で書くこと(例: href=\\"/api/page2/site/{site_id}/careers\\")。{css_instruction}",
   "design_spec": {{
     "color_palette": "使用した配色をコードで",
     "font": "見出し・本文のフォント方針",
@@ -212,6 +221,9 @@ async def generate_page(request: GeneratePageRequest):
 
     final_html = inject_click_interceptor(parsed["html"], site_id, "index")
 
+    design_spec = parsed["design_spec"]
+    design_spec["css_framework"] = css_framework
+
     page_id = str(uuid.uuid4())
     try:
         supabase.table("generated_pages").insert({
@@ -220,7 +232,7 @@ async def generate_page(request: GeneratePageRequest):
             "slug": "index",
             "prompt": user_prompt,
             "html_content": final_html,
-            "design_spec": parsed["design_spec"],
+            "design_spec": design_spec,
             "content_summary": parsed["content_summary"],
             "parent_slug": None
         }).execute()
@@ -267,12 +279,15 @@ async def generate_site_page(request: GenerateSitePageRequest):
         .single().execute()
     parent_summary = parent_page.data["content_summary"] if parent_page.data else "(情報なし)"
 
-    # 4. 生成プロンプト組み立て
+    # 4. 生成プロンプト組み立て(design_specに保存されたcss_frameworkを踏襲)
+    css_framework = design_spec.get("css_framework", "vanilla")
+    css_instruction = CSS_FRAMEWORK_INSTRUCTIONS.get(css_framework, CSS_FRAMEWORK_INSTRUCTIONS["vanilla"])
+
     system_instruction = f"""
 あなたはWebサイト生成エンジンです。以下のJSON形式で出力してください。
 
 {{
-  "html": "完全な1つのHTMLドキュメント(<!DOCTYPE html>から</html>まで)。内部リンクは href=\\"/api/page2/site/{site_id}/(スラッグ名)\\" の形式で書くこと。CSSは<style>タグ内にインラインで含めること。",
+  "html": "完全な1つのHTMLドキュメント(<!DOCTYPE html>から</html>まで)。内部リンクは href=\\"/api/page2/site/{site_id}/(スラッグ名)\\" の形式で書くこと。{css_instruction}",
   "content_summary": "このページで扱っている内容の3行程度の要約"
 }}
 

@@ -93,8 +93,10 @@ h2:nth-of-type(2)::before{
 /* ---- セクションカード ---- */
 .section{
   position: relative;
-  background: linear-gradient(180deg, var(--surface), var(--surface-2));
-  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(22,26,40,0.55), rgba(17,20,31,0.45));
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
   padding: 28px;
   margin-bottom: 22px;
@@ -179,14 +181,24 @@ button{
 }
 
 /* 主アクション: 保存する */
+/* デフォルトは地味なグレー(入力が空の状態) */
 #save-btn{
+  color: var(--muted);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  transition: all .25s ease;
+}
+
+/* テキストエリアに文字が入力されているときだけグラデーションで光らせる */
+.section:has(#input-text:not(:placeholder-shown)) #save-btn{
   color: #0a0c14;
   background: var(--grad);
   border: none;
+  box-shadow: 0 0 18px rgba(139,92,246,0.35);
 }
-#save-btn:hover{
+.section:has(#input-text:not(:placeholder-shown)) #save-btn:hover{
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(139,92,246,0.35);
+  box-shadow: 0 6px 24px rgba(139,92,246,0.45);
 }
 
 /* それ以外(取得系)は ghost ボタン */

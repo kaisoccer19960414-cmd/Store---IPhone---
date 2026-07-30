@@ -27,6 +27,7 @@ body{
   color: var(--text);
   font-family: 'Noto Sans JP', 'Space Grotesk', sans-serif;
   max-width: 760px;
+  font-size: 16px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -156,7 +157,7 @@ textarea:focus{
 select{
   font-family: 'JetBrains Mono', monospace;
   font-size: 12.5px;
-  background: #1f1414;
+  background: #0c0f18;
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 9px;
@@ -196,7 +197,7 @@ button{
 }
 #read-btn:hover, #fetch-all-btn:hover, #load-more-btn:hover{
   border-color: var(--cyan);
-  box-shadow: 0 0 14px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0 14px rgba(34,211,238,0.2);
 }
 #load-more-btn{
   margin-top: 14px;
@@ -205,7 +206,7 @@ button{
 /* ---- 出力エリア ---- */
 #output-area{
   margin-top: 16px;
-  background: #3254b9;
+  background: #0c0f18;
   border: 1px dashed var(--border);
   border-radius: 10px;
   padding: 16px;
@@ -256,4 +257,21 @@ button{
 #data-table button:hover{
   border-color: var(--pink);
   color: var(--pink);
+}
+
+@media (min-width: 1000px){
+  body{
+    max-width: 880px;
+    font-size: 17px;
+    padding: 64px 20px 100px;
+  }
+  h2:nth-of-type(2){ font-size: 30px; }
+  .section{ padding: 34px; }
+  .section h3{ font-size: 18px; }
+}
+
+@media (min-width: 1400px){
+  body{
+    max-width: 980px;
+  }
 }

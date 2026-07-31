@@ -23,7 +23,6 @@ body{
     radial-gradient(circle at 15% 0%, rgba(139,92,246,0.12), transparent 45%),
     radial-gradient(circle at 85% 20%, rgba(34,211,238,0.10), transparent 40%),
     var(--bg);
-  background-attachment: fixed;
   color: var(--text);
   font-family: 'Noto Sans JP', 'Space Grotesk', sans-serif;
   max-width: 760px;
@@ -93,9 +92,9 @@ h2:nth-of-type(2)::before{
 /* ---- セクションカード ---- */
 .section{
   position: relative;
-  background: linear-gradient(180deg, rgba(22,26,40,0.55), rgba(17,20,31,0.45));
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  background: linear-gradient(180deg, rgba(22,26,40,0.65), rgba(17,20,31,0.55));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
   padding: 28px;

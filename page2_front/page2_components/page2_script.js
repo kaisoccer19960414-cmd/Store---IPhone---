@@ -1,14 +1,24 @@
 // --- 1. 設定値 ---
 const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6MTc4MjU3MDU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
+
+const SUPABASE_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6MTc4MjU3MDU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
+
 
 // 🔑 Supabaseクライアントを初期化
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+);
+
 
 // 🎟️ 有効なログインチケット（アクセストークン）を自動取得する関数
 async function getValidToken() {
-    const { data: { session }, error } =
-        await supabaseClient.auth.getSession();
+
+    const {
+        data: { session },
+        error
+    } = await supabaseClient.auth.getSession();
 
     console.log("session =", session);
     console.log("error =", error);
@@ -20,17 +30,27 @@ async function getValidToken() {
     return session.access_token;
 }
 
+
 // 🔒 ログイン状態をチェックする関数
 async function checkAuth() {
-    const { data: { session }, error } =
-        await supabaseClient.auth.getSession();
+
+    const {
+        data: { session },
+        error
+    } = await supabaseClient.auth.getSession();
 
     if (error || !session) {
 
         // Googleログイン
         const { error: loginError } =
             await supabaseClient.auth.signInWithOAuth({
-                provider: 'google'
+                provider: 'google',
+
+                // ★★★ ここを追加 ★★★
+                options: {
+                    redirectTo:
+                        'https://store-iphone-1.vercel.app/page2.html'
+                }
             });
 
         if (loginError) {
@@ -44,8 +64,12 @@ async function checkAuth() {
     return true;
 }
 
+
+// 🍞 トースト表示
 function showToast(message, duration = 500) {
+
     const toast = document.getElementById('toast');
+
     toast.textContent = message;
     toast.style.display = 'block';
 

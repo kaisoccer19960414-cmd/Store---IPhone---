@@ -2,7 +2,7 @@
 const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
 
 const SUPABASE_KEY =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6MTc4MjU3MDU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6MTc4MjU3MDU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
 
 
 // 🔑 Supabaseクライアントを初期化
@@ -44,12 +44,7 @@ async function checkAuth() {
         // Googleログイン
         const { error: loginError } =
             await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-
-                // ★★★ ここを追加 ★★★
-                options: {
-                    redirectTo: 'https://store-iphone-portfolio.vercel.app/page2_front/page2.html'
-                }
+                provider: 'google'
             });
 
         if (loginError) {
@@ -77,8 +72,10 @@ function showToast(message, duration = 500) {
     }, duration);
 }
 
+
 // ページを開いたときの初期処理
 window.onload = async function() {
+
     const isLoggedIn = await checkAuth();
 
     if (!isLoggedIn) return;
@@ -98,8 +95,10 @@ window.onload = async function() {
     fetchLessonNotesByDate();
 }
 
+
 // データを保存する関数
 async function saveToDB() {
+
     const dateValue = document.getElementById('lesson-date').value;
     const contentValue = document.getElementById('input-content').value;
 
@@ -125,48 +124,62 @@ async function saveToDB() {
     });
 
     if (response.ok) {
+
         showToast('クラウドDBへ保存しました！');
-        document.getElementById('input-content').value = ''; 
-        
+
+        document.getElementById('input-content').value = '';
+
         if (dateValue === document.getElementById('search-date').value) {
             fetchLessonNotesByDate();
         }
+
     } else {
+
         alert('保存に失敗しました。');
     }
 }
 
+
 // 選ばれた日付のデータだけを取得する関数
 async function fetchLessonNotesByDate() {
+
     const searchDate = document.getElementById('search-date').value;
     const title = document.getElementById('display-date-title');
     const list = document.getElementById('lesson-list');
-    const summaryBox = document.getElementById('summary-content'); 
+    const summaryBox = document.getElementById('summary-content');
 
     if (!searchDate) return;
 
     title.innerText = `📅 ${searchDate} の授業メモ`;
     list.innerHTML = '<li class="status-msg">読み込み中...</li>';
-    summaryBox.innerHTML = '<p class="status-msg">読み込み中...</p>'; 
+    summaryBox.innerHTML = '<p class="status-msg">読み込み中...</p>';
 
     const token = await getValidToken();
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.asc`, {
-        method: 'GET',
-        headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`
+    const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${searchDate}&order=id.asc`,
+        {
+            method: 'GET',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${token}`
+            }
         }
-    });
+    );
 
     if (response.ok) {
+
         const data = await response.json();
+
         list.innerHTML = '';
-        summaryBox.innerHTML = ''; 
+        summaryBox.innerHTML = '';
 
         if (data.length > 0) {
+
             data.forEach(item => {
+
                 const li = document.createElement('li');
+
                 li.innerText = item.content;
                 li.style.cursor = 'pointer';
                 li.style.userSelect = 'none';
@@ -174,226 +187,435 @@ async function fetchLessonNotesByDate() {
                 let pressTimer;
 
                 li.addEventListener('touchstart', (e) => {
+
                     pressTimer = setTimeout(() => {
                         handleLongPress(item.id, item.content);
                     }, 800);
+
                 });
-                li.addEventListener('touchend', () => clearTimeout(pressTimer));
-                li.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+                li.addEventListener(
+                    'touchend',
+                    () => clearTimeout(pressTimer)
+                );
+
+                li.addEventListener(
+                    'touchmove',
+                    () => clearTimeout(pressTimer)
+                );
 
                 li.addEventListener('mousedown', (e) => {
+
                     pressTimer = setTimeout(() => {
                         handleLongPress(item.id, item.content);
                     }, 800);
+
                 });
-                li.addEventListener('mouseup', () => clearTimeout(pressTimer));
-                li.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-                
+
+                li.addEventListener(
+                    'mouseup',
+                    () => clearTimeout(pressTimer)
+                );
+
+                li.addEventListener(
+                    'mouseleave',
+                    () => clearTimeout(pressTimer)
+                );
+
                 list.appendChild(li);
             });
 
+
             let foundSummary = null;
+
             for (let i = data.length - 1; i >= 0; i--) {
+
                 if (data[i].summary && data[i].summary !== "REQUESTED") {
                     foundSummary = data[i].summary;
                     break;
                 }
             }
-            
-            const hasRequested = data.some(item => item.summary === "REQUESTED");
+
+
+            const hasRequested =
+                data.some(item => item.summary === "REQUESTED");
+
 
             if (foundSummary) {
-                summaryBox.innerText = foundSummary; 
+
+                summaryBox.innerText = foundSummary;
+
             } else if (hasRequested) {
-                summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">⏳ 現在、PCのPythonが要約を作成中（REQUESTED）です...終わったら画面をリロードしてください。</p>';
+
+                summaryBox.innerHTML =
+                    '<p class="status-msg" style="color: #cca300;">⏳ 現在、PCのPythonが要約を作成中（REQUESTED）です...終わったら画面をリロードしてください。</p>';
+
             } else {
-                summaryBox.innerHTML = '<p class="status-msg" style="color: #cca300;">⚠️ 要約がありません。「要約を生成する」ボタンを押して、PCでスクリプトを実行してください。</p>';
+
+                summaryBox.innerHTML =
+                    '<p class="status-msg" style="color: #cca300;">⚠️ 要約がありません。「要約を生成する」ボタンを押して、PCでスクリプトを実行してください。</p>';
             }
+
         } else {
-            list.innerHTML = '<li class="status-msg">この日のメモはまだ登録されていません。</li>';
-            summaryBox.innerHTML = '<p class="status-msg">授業メモがないため、要約はありません。</p>';
+
+            list.innerHTML =
+                '<li class="status-msg">この日のメモはまだ登録されていません。</li>';
+
+            summaryBox.innerHTML =
+                '<p class="status-msg">授業メモがないため、要約はありません。</p>';
         }
+
     } else {
-        list.innerHTML = '<li class="status-msg" style="color:red;">データの取得に失敗しました。</li>';
-        summaryBox.innerHTML = '<p class="status-msg" style="color:red;">要約の取得に失敗しました。</p>';
+
+        list.innerHTML =
+            '<li class="status-msg" style="color:red;">データの取得に失敗しました。</li>';
+
+        summaryBox.innerHTML =
+            '<p class="status-msg" style="color:red;">要約の取得に失敗しました。</p>';
     }
 }
 
+
 // 長押しされたときの処理
 function handleLongPress(id, content) {
-    const shortContent = content.length > 20 ? content.substring(0, 20) + '...' : content;
-    const confirmDelete = confirm(`❌ 以下の項目を削除しますか？\n\n「${shortContent}」`);
-    
+
+    const shortContent =
+        content.length > 20
+            ? content.substring(0, 20) + '...'
+            : content;
+
+    const confirmDelete =
+        confirm(`❌ 以下の項目を削除しますか？\n\n「${shortContent}」`);
+
     if (confirmDelete) {
         deleteNote(id);
     }
 }
 
+
 // SupabaseのDBからデータを削除する関数
 async function deleteNote(id) {
+
     const token = await getValidToken();
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${id}`, {
-        method: 'DELETE',
-        headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`,
-            'Prefer': 'return=representation'
+    const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${id}`,
+        {
+            method: 'DELETE',
+            headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${token}`,
+                'Prefer': 'return=representation'
+            }
         }
-    });
+    );
 
     if (response.ok) {
+
         showToast('削除しました！');
+
         fetchLessonNotesByDate();
+
     } else {
+
         alert('削除に失敗しました。');
     }
 }
 
+
 // 要約リクエストをVercelのPython APIに直接送信する関数
 async function generateSummaryNow() {
-    const searchDate = document.getElementById('search-date').value;
-    const summaryBox = document.getElementById('summary-content');
-    const listItems = document.querySelectorAll('#lesson-list li');
+
+    const searchDate =
+        document.getElementById('search-date').value;
+
+    const summaryBox =
+        document.getElementById('summary-content');
+
+    const listItems =
+        document.querySelectorAll('#lesson-list li');
+
 
     // 要約するメモがあるかチェック
-    if (!searchDate || listItems.length === 0 || listItems[0].classList.contains('status-msg')) {
+    if (
+        !searchDate ||
+        listItems.length === 0 ||
+        listItems[0].classList.contains('status-msg')
+    ) {
         alert('要約する授業メモがありません！');
         return;
     }
 
-    summaryBox.innerHTML = '<p class="status-msg" style="color: #0066cc;">⏳ Geminiが要約を生成中...</p>';
+
+    summaryBox.innerHTML =
+        '<p class="status-msg" style="color: #0066cc;">⏳ Geminiが要約を生成中...</p>';
+
 
     try {
+
         // 💡 Vercel上の自分自身のPython API（/api/summarize）を呼び出す
-        // 相対パスで指定することで、本番環境でもそのまま動きます
-        const response =await fetch('/api/page2/summarize', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ target_date: searchDate })
-        });
+        // 相対パスで指定することで本番環境でもそのまま動きます
+        const response =
+            await fetch('/api/page2/summarize', {
+
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+
+                body: JSON.stringify({
+                    target_date: searchDate
+                })
+            });
+
 
         const data = await response.json();
 
+
         if (!response.ok) {
-            throw new Error(data.detail || '要約の生成に失敗しました。');
+            throw new Error(
+                data.detail || '要約の生成に失敗しました。'
+            );
         }
+
 
         // 成功したら、画面の要約エリアを書き換える
         summaryBox.innerText = data.summary;
-        alert('🎉 Geminiの要約が完了し、Supabaseへ保存されました！');
+
+        alert(
+            '🎉 Geminiの要約が完了し、Supabaseへ保存されました！'
+        );
 
     } catch (error) {
+
         console.error(error);
-        summaryBox.innerHTML = `<p class="status-msg" style="color:red;">❌ エラー: ${error.message}</p>`;
-        alert('エラーが発生しました：' + error.message);
+
+        summaryBox.innerHTML =
+            `<p class="status-msg" style="color:red;">❌ エラー: ${error.message}</p>`;
+
+        alert(
+            'エラーが発生しました：' + error.message
+        );
     }
 }
 
+
 // 補助関数: 生成した要約をSupabaseに格納する
-async function saveSummaryToSupabase(dateStr, summaryText) {
+async function saveSummaryToSupabase(
+    dateStr,
+    summaryText
+) {
+
     const token = await getValidToken();
 
-    const getRes = await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${dateStr}&order=id.desc&limit=1`, {
-        method: 'GET',
-        headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${token}`
-        }
-    });
-
-    if (getRes.ok) {
-        const data = await getRes.json();
-        if (data.length > 0) {
-            const targetId = data[0].id;
-            await fetch(`${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${targetId}`, {
-                method: 'PATCH', 
+    const getRes =
+        await fetch(
+            `${SUPABASE_URL}/rest/v1/lesson_notes?lesson_date=eq.${dateStr}&order=id.desc&limit=1`,
+            {
+                method: 'GET',
                 headers: {
                     'apikey': SUPABASE_KEY,
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ summary: summaryText })
-            });
-            console.log("💾 Supabaseへ要約の同期が完了しました！");
+                    'Authorization': `Bearer ${token}`
+                }
+            }
+        );
+
+
+    if (getRes.ok) {
+
+        const data = await getRes.json();
+
+        if (data.length > 0) {
+
+            const targetId = data[0].id;
+
+            await fetch(
+                `${SUPABASE_URL}/rest/v1/lesson_notes?id=eq.${targetId}`,
+                {
+                    method: 'PATCH',
+
+                    headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+
+                    body: JSON.stringify({
+                        summary: summaryText
+                    })
+                }
+            );
+
+            console.log(
+                "💾 Supabaseへ要約の同期が完了しました！"
+            );
         }
     }
 }
 
 
 async function generateAIPage() {
-    const prompt = document.getElementById("ai-page-prompt").value.trim();
-    const statusEl = document.getElementById("ai-page-status");
+
+    const prompt =
+        document.getElementById("ai-page-prompt").value.trim();
+
+    const statusEl =
+        document.getElementById("ai-page-status");
+
     if (!prompt) return;
 
     statusEl.textContent = "生成中...";
-    try {
-        const res = await fetch("/api/page2/generate-page", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail);
 
-        window.open(`/api/page2/render/${data.page_id}`, "_blank");
-        statusEl.textContent = "生成完了！新しいタブで開きました。";
+    try {
+
+        const res =
+            await fetch("/api/page2/generate-page", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    prompt
+                })
+            });
+
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail);
+        }
+
+
+        window.open(
+            `/api/page2/render/${data.page_id}`,
+            "_blank"
+        );
+
+        statusEl.textContent =
+            "生成完了！新しいタブで開きました。";
+
     } catch (e) {
-        statusEl.textContent = `エラー: ${e.message}`;
+
+        statusEl.textContent =
+            `エラー: ${e.message}`;
     }
 }
 
 
 async function loadPageHistory() {
-    const listEl = document.getElementById("page-history-list");
-    listEl.innerHTML = `<li class="status-msg">読み込み中...</li>`;
+
+    const listEl =
+        document.getElementById("page-history-list");
+
+    listEl.innerHTML =
+        `<li class="status-msg">読み込み中...</li>`;
+
 
     try {
-        const res = await fetch("/api/page2/list-pages");
+
+        const res =
+            await fetch("/api/page2/list-pages");
+
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail);
+
+        if (!res.ok) {
+            throw new Error(data.detail);
+        }
+
 
         if (data.pages.length === 0) {
-            listEl.innerHTML = `<li class="status-msg">まだ履歴がありません。</li>`;
+
+            listEl.innerHTML =
+                `<li class="status-msg">まだ履歴がありません。`;
+
             return;
         }
 
-        listEl.innerHTML = data.pages.map(page => {
-            const date = new Date(page.created_at).toLocaleString("ja-JP");
-            return `
-                <li>
-                    <a href="/api/page2/render/${page.id}" target="_blank">${page.prompt}</a>
-                    <span style="color: #888; font-size: 12px;">（${date}）</span>
-                </li>
-            `;
-        }).join("");
+
+        listEl.innerHTML =
+            data.pages.map(page => {
+
+                const date =
+                    new Date(page.created_at)
+                        .toLocaleString("ja-JP");
+
+                return `
+                    <li>
+                        <a href="/api/page2/render/${page.id}" target="_blank">
+                            ${page.prompt}
+                        </a>
+                        <span style="color: #888; font-size: 12px;">
+                            （${date}）
+                        </span>
+                    </li>
+                `;
+
+            }).join("");
+
     } catch (e) {
-        listEl.innerHTML = `<li class="status-msg">エラー: ${e.message}</li>`;
+
+        listEl.innerHTML =
+            `<li class="status-msg">エラー: ${e.message}</li>`;
     }
 }
 
 
 async function generateAIPage() {
-    const prompt = document.getElementById("ai-page-prompt").value.trim();
-    const cssFramework = document.getElementById("css-framework").value;
-    const statusEl = document.getElementById("ai-page-status");
+
+    const prompt =
+        document.getElementById("ai-page-prompt").value.trim();
+
+    const cssFramework =
+        document.getElementById("css-framework").value;
+
+    const statusEl =
+        document.getElementById("ai-page-status");
+
     if (!prompt) return;
 
     statusEl.textContent = "生成中...";
-    try {
-        const res = await fetch("/api/page2/generate-page", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt, css_framework: cssFramework })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail);
 
-        window.open(`/api/page2/render/${data.page_id}`, "_blank");
-        statusEl.textContent = "生成完了！新しいタブで開きました。";
+    try {
+
+        const res =
+            await fetch("/api/page2/generate-page", {
+
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    prompt,
+                    css_framework: cssFramework
+                })
+            });
+
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail);
+        }
+
+
+        window.open(
+            `/api/page2/render/${data.page_id}`,
+            "_blank"
+        );
+
+        statusEl.textContent =
+            "生成完了！新しいタブで開きました。";
+
     } catch (e) {
-        statusEl.textContent = `エラー: ${e.message}`;
+
+        statusEl.textContent =
+            `エラー: ${e.message}`;
     }
 }

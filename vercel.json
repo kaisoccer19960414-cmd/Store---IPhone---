@@ -3,6 +3,14 @@
     {
       "source": "/api/page2/(.*)",
       "destination": "/api/page2/index.py"
+    },
+    {
+      "source": "/page2.html",
+      "destination": "/page2_front/page2.html"
+    },
+    {
+      "source": "/page2_components/(.*)",
+      "destination": "/page2_front/page2_components/$1"
     }
   ]
 }

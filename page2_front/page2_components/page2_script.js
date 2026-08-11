@@ -48,8 +48,7 @@ async function checkAuth() {
 
                 // ★★★ ここを追加 ★★★
                 options: {
-                    redirectTo:
-                        'https://store-iphone-1.vercel.app/page2.html'
+                    redirectTo: 'https://store-iphone-portfolio.vercel.app/page2_front/page2.html'
                 }
             });
 

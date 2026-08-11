@@ -1,45 +1,40 @@
 // --- 1. 設定値 ---
 const SUPABASE_URL = 'https://tekrwutayfleorpfbuhc.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NzA1ODIsImV4cCI6MjA5ODE0NjU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRla3J3dXRheWZsZW9ycGZidWhjIiwicm9sZSI6MTc4MjU3MDU4Mn0.eG8ENxN1BxZn_yFdxrsytz2Qa9LCT95WgdRqLkEDs80';
 
 // 🔑 Supabaseクライアントを初期化
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 🎟️ 有効なログインチケット（アクセストークン）を自動取得する関数
 async function getValidToken() {
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { data: { session } } =
+        await supabaseClient.auth.getSession();
+
     return session ? session.access_token : SUPABASE_KEY;
 }
 
-// 🔒 ログイン状態をチェックする関数（ポップアップ用）
+// 🔒 ログイン状態をチェックする関数
 async function checkAuth() {
-    const { data: { session }, error } = await supabaseClient.auth.getSession();
+    const { data: { session }, error } =
+        await supabaseClient.auth.getSession();
 
     if (error || !session) {
-        const email = prompt("登録したメールアドレスを入力してください：");
-        const password = prompt("パスワードを入力してください：");
 
-        if (!email || !password) {
-            alert("ログインが必要やで！画面を再読み込みしてな。");
-            return false;
-        }
-
-        const { error: loginError } = await supabaseClient.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
+        // Googleログイン
+        const { error: loginError } =
+            await supabaseClient.auth.signInWithOAuth({
+                provider: 'google'
+            });
 
         if (loginError) {
-            alert("ログインに失敗したわ： " + loginError.message);
-            window.location.reload();
-            return false;
-        } else {
-            alert("ログイン成功！");
-            window.location.reload();
+            alert("Googleログイン失敗： " + loginError.message);
             return false;
         }
+
+        return false;
     }
-    return true; 
+
+    return true;
 }
 
 function showToast(message, duration = 500) {
@@ -55,20 +50,21 @@ function showToast(message, duration = 500) {
 // ページを開いたときの初期処理
 window.onload = async function() {
     const isLoggedIn = await checkAuth();
-    if (!isLoggedIn) return; 
+
+    if (!isLoggedIn) return;
 
     const today = new Date();
-    const jstOffset = 9 * 60 * 60 * 1000; 
+    const jstOffset = 9 * 60 * 60 * 1000;
     const jstDate = new Date(today.getTime() + jstOffset);
-    
+
     const yyyy = jstDate.getUTCFullYear();
     const mm = String(jstDate.getUTCMonth() + 1).padStart(2, '0');
     const dd = String(jstDate.getUTCDate()).padStart(2, '0');
     const formattedDate = `${yyyy}-${mm}-${dd}`;
-    
+
     document.getElementById('lesson-date').value = formattedDate;
     document.getElementById('search-date').value = formattedDate;
-    
+
     fetchLessonNotesByDate();
 }
 

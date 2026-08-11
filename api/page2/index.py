@@ -375,16 +375,45 @@ async def render_page(page_id: str):
     return HTMLResponse(content=response.data["html_content"])
 
 
-# --- 生成履歴一覧 ---
+# --- 生成履歴一覧（site_idでグループ化し、indexページのみを派生数付きで返す） ---
 @app.get("/api/page2/list-pages")
 async def list_pages():
     try:
         response = supabase.table("generated_pages") \
-            .select("id, prompt, created_at") \
+            .select("id, site_id, slug, prompt, created_at") \
             .order("created_at", desc=True) \
-            .limit(50) \
+            .limit(200) \
             .execute()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"取得に失敗しました: {str(e)}")
 
-    return {"status": "success", "pages": response.data}
+    rows = response.data
+
+    # site_idごとにグループ化(site_idが無い古いデータは自分自身のidを単独グループとして扱う)
+    groups = {}
+    order = []
+    for row in rows:
+        key = row.get("site_id") or row["id"]
+        if key not in groups:
+            groups[key] = {"root": None, "children": []}
+            order.append(key)
+
+        if row.get("slug") == "index" or not row.get("site_id"):
+            groups[key]["root"] = row
+        else:
+            groups[key]["children"].append(row)
+
+    result = []
+    for key in order:
+        g = groups[key]
+        root = g["root"] or (g["children"][0] if g["children"] else None)
+        if not root:
+            continue
+        result.append({
+            "id": root["id"],
+            "prompt": root.get("prompt") or "(無題)",
+            "created_at": root["created_at"],
+            "derived_count": len(g["children"])
+        })
+
+    return {"status": "success", "pages": result}

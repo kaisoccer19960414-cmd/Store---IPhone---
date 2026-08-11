@@ -7,10 +7,17 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 🎟️ 有効なログインチケット（アクセストークン）を自動取得する関数
 async function getValidToken() {
-    const { data: { session } } =
+    const { data: { session }, error } =
         await supabaseClient.auth.getSession();
 
-    return session ? session.access_token : SUPABASE_KEY;
+    console.log("session =", session);
+    console.log("error =", error);
+
+    if (!session) {
+        throw new Error("Supabaseのログインセッションがない");
+    }
+
+    return session.access_token;
 }
 
 // 🔒 ログイン状態をチェックする関数

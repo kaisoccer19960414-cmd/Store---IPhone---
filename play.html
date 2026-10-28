@@ -49,6 +49,19 @@
   <pre id="flashyMsg">エラーが出たらここに表示される</pre>
   <div id="physBox"></div>
 
+  <h2>変なやつ</h2>
+  <button id="fairy">cursor-effects: 妖精の粉</button>
+  <button id="ghost">cursor-effects: 幽霊</button>
+  <button id="emojiCur">cursor-effects: 絵文字</button>
+  <button id="rainbow">Cursorly.js: 虹の軌跡</button>
+  <button id="snap">Thanos: 下の枠を消す</button>
+  <button id="fart">fartscroll.js: スクロールで音が出る</button>
+  <br>
+  <input id="owoText" type="text" value="Hello friend!" style="width:12rem">
+  <button id="owo">owoifyx: 変換</button>
+  <button id="ipsum">corporate-ipsum: 会社っぽい文章</button>
+  <pre id="weirdOut">ここに結果が出る(Thanosで消える枠もここ)</pre>
+
   <script type="module">
     // CDNから is-even を読み込む(npm installなしで使う方法)
     import isEven from 'https://cdn.jsdelivr.net/npm/is-even/+esm';
@@ -208,6 +221,71 @@
           Composite.add(physEngine.world, body);
         }
       } catch (e) { fail('Matter.js', e); }
+    };
+
+    // ===== 変なやつ =====
+    const weird = document.getElementById('weirdOut');
+
+    // cursor-effects: カーソルの飾り。1つだけ有効にしたいので、前のを destroy してから作る
+    let cursorFx = null;
+    const setCursorFx = async (make) => {
+      try {
+        if (cursorFx && cursorFx.destroy) cursorFx.destroy();
+        cursorFx = null;
+        const m = await import('https://unpkg.com/cursor-effects@latest/dist/esm.js');
+        cursorFx = make(m);
+      } catch (e) { fail('cursor-effects', e); }
+    };
+    document.getElementById('fairy').onclick = () => setCursorFx((m) => new m.fairyDustCursor());
+    document.getElementById('ghost').onclick = () => setCursorFx((m) => new m.ghostCursor());
+    document.getElementById('emojiCur').onclick = () => setCursorFx((m) => new m.emojiCursor({ emoji: ['🔥', '🐬', '🦆'] }));
+
+    // Cursorly.js: script タグ方式。読み込み後に Cursorly があるか確認する
+    document.getElementById('rainbow').onclick = async () => {
+      try {
+        if (!window.Cursorly) await loadScript('https://cdn.jsdelivr.net/gh/iamashruu/cursorly.js@latest/dist/cursorly.min.js');
+        if (!window.Cursorly) throw new Error('読み込んだのに Cursorly が定義されていない');
+        window.Cursorly.init({ cursor: 0, effect: { name: 'trail', color: 'rainbow' } });
+      } catch (e) { fail('Cursorly.js', e); }
+    };
+
+    // Thanos: 下の枠を消して、3秒後に戻す(thanosSnap / thanosRewind)
+    document.getElementById('snap').onclick = async () => {
+      try {
+        const m = await import('https://cdn.jsdelivr.net/npm/@wellwind/thanos-snap/+esm');
+        await m.thanosSnap(weird);
+        setTimeout(() => m.thanosRewind(weird), 3000);
+      } catch (e) { fail('thanos-snap', e); }
+    };
+
+    // fartscroll.js: 400px スクロールするごとに音が鳴る。止めるにはページの再読み込み
+    document.getElementById('fart').onclick = async () => {
+      try {
+        if (typeof window.fartscroll !== 'function') await loadScript('https://cdn.jsdelivr.net/gh/theonion/fartscroll.js/fartscroll.js');
+        if (typeof window.fartscroll !== 'function') throw new Error('読み込んだのに fartscroll が定義されていない');
+        window.fartscroll(400);
+        show(weird, 'スクロールしてみて(音が出る)。止めるにはページを再読み込み');
+      } catch (e) { fail('fartscroll', e); }
+    };
+
+    // owoifyx: 英語を赤ちゃん言葉っぽくする
+    document.getElementById('owo').onclick = async () => {
+      try {
+        const m = await import('https://cdn.jsdelivr.net/npm/owoifyx/+esm');
+        const owoify = typeof m.default === 'function' ? m.default : m.owoify;
+        if (typeof owoify !== 'function') throw new Error('中身が想定外: ' + Object.keys(m).join(','));
+        show(weird, owoify(document.getElementById('owoText').value));
+      } catch (e) { fail('owoifyx', e); }
+    };
+
+    // corporate-ipsum: 会社っぽい意味のない文章
+    document.getElementById('ipsum').onclick = async () => {
+      try {
+        const m = await import('https://cdn.jsdelivr.net/npm/corporate-ipsum/+esm');
+        const createIpsum = typeof m.default === 'function' ? m.default : m.createIpsum;
+        if (typeof createIpsum !== 'function') throw new Error('中身が想定外: ' + Object.keys(m).join(','));
+        show(weird, createIpsum());
+      } catch (e) { fail('corporate-ipsum', e); }
     };
   </script>
 </body>

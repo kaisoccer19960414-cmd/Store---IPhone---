@@ -118,21 +118,23 @@
       console.error(name, e);
     };
 
-    // canvas-confetti: 読み込むと window.confetti という関数ができる
+    // canvas-confetti: import 方式で読み込む(script タグ方式だと関数が見つからなかった)
     document.getElementById('confetti').onclick = async () => {
       try {
-        if (!window.confetti) await loadScript('https://cdn.jsdelivr.net/npm/canvas-confetti@latest/dist/confetti.browser.min.js');
-        if (typeof window.confetti !== 'function') throw new Error('読み込んだのに confetti が定義されていない');
-        window.confetti({ particleCount: 150, spread: 80, origin: { y: 0.7 } });
+        const m = await import('https://cdn.jsdelivr.net/npm/canvas-confetti/+esm');
+        const confetti = typeof m.default === 'function' ? m.default : m.confetti;
+        if (typeof confetti !== 'function') throw new Error('中身が想定外: ' + Object.keys(m).join(','));
+        confetti({ particleCount: 150, spread: 80, origin: { y: 0.7 } });
       } catch (e) { fail('confetti', e); }
     };
 
-    // party.js: 読み込むと window.party ができる。押したボタンから飛び出す
+    // party.js: import 方式で読み込む。押したボタンから飛び出す
     document.getElementById('party').onclick = async (ev) => {
       try {
-        if (!window.party) await loadScript('https://cdn.jsdelivr.net/npm/party-js@latest/bundle/party.min.js');
-        if (!window.party || typeof window.party.confetti !== 'function') throw new Error('読み込んだのに party.confetti が無い');
-        window.party.confetti(ev.currentTarget);
+        const m = await import('https://cdn.jsdelivr.net/npm/party-js/+esm');
+        const party = (m.default && m.default.confetti) ? m.default : m;
+        if (typeof party.confetti !== 'function') throw new Error('中身が想定外: ' + Object.keys(m).join(','));
+        party.confetti(ev.currentTarget);
       } catch (e) { fail('party.js', e); }
     };
 

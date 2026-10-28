@@ -24,6 +24,20 @@
   <button id="check">偶数?</button>
   <pre id="out">ここに結果が出る</pre>
 
+  <h2>sillyname</h2>
+  <button id="silly">変な名前を作る</button>
+  <pre id="sillyOut">ここに名前が出る</pre>
+
+  <h2>cowsay</h2>
+  <input id="cowText" type="text" value="moo" style="width:12rem">
+  <button id="cow">牛にしゃべらせる</button>
+  <pre id="cowOut">ここに牛が出る</pre>
+
+  <h2>JSFuck(JScrewIt)</h2>
+  <input id="fuckText" type="text" value="hi" style="width:12rem">
+  <button id="fuck">変換</button>
+  <pre id="fuckOut">ここに結果が出る</pre>
+
   <script type="module">
     // CDNから is-even を読み込む(npm installなしで使う方法)
     import isEven from 'https://cdn.jsdelivr.net/npm/is-even/+esm';
@@ -42,6 +56,46 @@
     document.getElementById('check').onclick = () => {
       const n = Number(document.getElementById('num').value);
       out.textContent = `${n} は ` + (isEven(n) ? '偶数' : '奇数');
+    };
+
+    // ここから追加分。ボタンを押した時にだけ読み込むので、失敗しても他のボタンは動く
+    const show = (el, text) => { el.textContent = text; };
+
+    document.getElementById('silly').onclick = async () => {
+      const el = document.getElementById('sillyOut');
+      try {
+        const m = await import('https://cdn.jsdelivr.net/npm/sillyname/+esm');
+        show(el, m.default());
+      } catch (e) { show(el, '失敗: ' + e.message); }
+    };
+
+    document.getElementById('cow').onclick = async () => {
+      const el = document.getElementById('cowOut');
+      try {
+        const m = await import('https://cdn.jsdelivr.net/npm/cowsay/+esm');
+        const say = m.say || m.default.say;
+        show(el, say({ text: document.getElementById('cowText').value }));
+      } catch (e) { show(el, '失敗: ' + e.message); }
+    };
+
+    // JScrewItは import ではなく、普通の script タグ形式で読み込む
+    const loadScript = (src) => new Promise((ok, ng) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = ok;
+      s.onerror = () => ng(new Error('読み込み失敗'));
+      document.head.appendChild(s);
+    });
+
+    document.getElementById('fuck').onclick = async () => {
+      const el = document.getElementById('fuckOut');
+      try {
+        if (!window.JScrewIt) await loadScript('https://cdn.jsdelivr.net/npm/jscrewit');
+        const text = document.getElementById('fuckText').value;
+        const code = window.JScrewIt.encode(JSON.stringify(text));
+        const back = (0, eval)(code);
+        show(el, `${code.length}文字になった\n\n${code.slice(0, 300)}...\n\n実行して戻すと: ${back}`);
+      } catch (e) { show(el, '失敗: ' + e.message); }
     };
   </script>
 </body>

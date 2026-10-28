@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JS遊び場</title>
+<style>
+  body { font-family: sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; background: #111; color: #eee; }
+  h1 { font-size: 1.4rem; }
+  button { padding: .5rem 1rem; margin: .25rem .25rem .25rem 0; cursor: pointer; }
+  input { padding: .5rem; width: 6rem; }
+  pre { background: #222; padding: 1rem; border-radius: 6px; min-height: 3rem; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+  <h1>JS遊び場</h1>
+  <p id="text">このページの文字で遊ぶ。ボタンを押してみて。</p>
+
+  <button id="reverse">文字を反転</button>
+  <button id="color">背景色ランダム</button>
+
+  <h2>is-even を試す</h2>
+  <input id="num" type="number" value="4">
+  <button id="check">偶数?</button>
+  <pre id="out">ここに結果が出る</pre>
+
+  <script type="module">
+    // CDNから is-even を読み込む(npm installなしで使う方法)
+    import isEven from 'https://cdn.jsdelivr.net/npm/is-even/+esm';
+
+    const out = document.getElementById('out');
+
+    document.getElementById('reverse').onclick = () => {
+      const t = document.getElementById('text');
+      t.textContent = [...t.textContent].reverse().join('');
+    };
+
+    document.getElementById('color').onclick = () => {
+      document.body.style.background = `hsl(${Math.random() * 360}, 40%, 20%)`;
+    };
+
+    document.getElementById('check').onclick = () => {
+      const n = Number(document.getElementById('num').value);
+      out.textContent = `${n} は ` + (isEven(n) ? '偶数' : '奇数');
+    };
+  </script>
+</body>
+</html>

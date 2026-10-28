@@ -111,12 +111,18 @@
 
     // ===== 派手なやつ(どれも押した時に初めて読み込む) =====
     const msg = document.getElementById('flashyMsg');
-    const fail = (name, e) => show(msg, `${name} 失敗: ${e.message}`);
+    const logLines = [];
+    const fail = (name, e) => {
+      logLines.push(`${name} 失敗: ${e.message}`);
+      show(msg, logLines.slice(-5).join('\n'));
+      console.error(name, e);
+    };
 
     // canvas-confetti: 読み込むと window.confetti という関数ができる
     document.getElementById('confetti').onclick = async () => {
       try {
-        if (!window.confetti) await loadScript('https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js');
+        if (!window.confetti) await loadScript('https://cdn.jsdelivr.net/npm/canvas-confetti@latest/dist/confetti.browser.min.js');
+        if (typeof window.confetti !== 'function') throw new Error('読み込んだのに confetti が定義されていない');
         window.confetti({ particleCount: 150, spread: 80, origin: { y: 0.7 } });
       } catch (e) { fail('confetti', e); }
     };
@@ -125,7 +131,8 @@
     document.getElementById('party').onclick = async (ev) => {
       try {
         if (!window.party) await loadScript('https://cdn.jsdelivr.net/npm/party-js@latest/bundle/party.min.js');
-        window.party.confetti(ev.currentTarget, { count: window.party.variation.range(20, 40) });
+        if (!window.party || typeof window.party.confetti !== 'function') throw new Error('読み込んだのに party.confetti が無い');
+        window.party.confetti(ev.currentTarget);
       } catch (e) { fail('party.js', e); }
     };
 

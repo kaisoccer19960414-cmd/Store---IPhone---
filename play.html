@@ -10,6 +10,7 @@
   button { padding: .5rem 1rem; margin: .25rem .25rem .25rem 0; cursor: pointer; }
   input { padding: .5rem; width: 6rem; }
   pre { background: #222; padding: 1rem; border-radius: 6px; min-height: 3rem; white-space: pre-wrap; }
+  #physBox { height: 280px; margin-top: .5rem; border-radius: 6px; overflow: hidden; }
 </style>
 </head>
 <body>
@@ -37,6 +38,16 @@
   <input id="fuckText" type="text" value="hi" style="width:12rem">
   <button id="fuck">変換</button>
   <pre id="fuckOut">ここに結果が出る</pre>
+
+  <h2>派手なやつ</h2>
+  <button id="confetti">canvas-confetti: 紙吹雪</button>
+  <button id="party">party.js: ボタンから紙吹雪</button>
+  <button id="fw">tsParticles: 花火(8秒)</button>
+  <button id="clippy">clippyjs: Clippyを呼ぶ</button>
+  <button id="neko">oneko.js: 猫を呼ぶ</button>
+  <button id="phys">Matter.js: 物を降らせる</button>
+  <pre id="flashyMsg">エラーが出たらここに表示される</pre>
+  <div id="physBox"></div>
 
   <script type="module">
     // CDNから is-even を読み込む(npm installなしで使う方法)
@@ -96,6 +107,98 @@
         const back = (0, eval)(code);
         show(el, `${code.length}文字になった\n\n${code.slice(0, 300)}...\n\n実行して戻すと: ${back}`);
       } catch (e) { show(el, '失敗: ' + e.message); }
+    };
+
+    // ===== 派手なやつ(どれも押した時に初めて読み込む) =====
+    const msg = document.getElementById('flashyMsg');
+    const fail = (name, e) => show(msg, `${name} 失敗: ${e.message}`);
+
+    // canvas-confetti: 読み込むと window.confetti という関数ができる
+    document.getElementById('confetti').onclick = async () => {
+      try {
+        if (!window.confetti) await loadScript('https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js');
+        window.confetti({ particleCount: 150, spread: 80, origin: { y: 0.7 } });
+      } catch (e) { fail('confetti', e); }
+    };
+
+    // party.js: 読み込むと window.party ができる。押したボタンから飛び出す
+    document.getElementById('party').onclick = async (ev) => {
+      try {
+        if (!window.party) await loadScript('https://cdn.jsdelivr.net/npm/party-js@latest/bundle/party.min.js');
+        window.party.confetti(ev.currentTarget, { count: window.party.variation.range(20, 40) });
+      } catch (e) { fail('party.js', e); }
+    };
+
+    // tsParticles fireworks: 夜中なので音はオフ。聞きたければ sounds を true に
+    document.getElementById('fw').onclick = async () => {
+      try {
+        if (!window.fireworks) await loadScript('https://cdn.jsdelivr.net/npm/@tsparticles/fireworks@4/tsparticles.fireworks.bundle.min.js');
+        const inst = await window.fireworks({ sounds: false });
+        setTimeout(() => {
+          try { if (inst.stop) inst.stop(); else if (inst.pause) inst.pause(); } catch (_) {}
+        }, 8000);
+      } catch (e) { fail('fireworks', e); }
+    };
+
+    // clippyjs: モジュール形式で読み込む
+    let clippyAgent = null;
+    document.getElementById('clippy').onclick = async () => {
+      try {
+        if (!clippyAgent) {
+          const { initAgent } = await import('https://cdn.jsdelivr.net/npm/clippyjs/dist/index.mjs');
+          const agents = await import('https://cdn.jsdelivr.net/npm/clippyjs/dist/agents/index.mjs');
+          clippyAgent = await initAgent(agents.Clippy);
+        }
+        clippyAgent.show();
+        clippyAgent.speak('コードを書いているようですね。お手伝いしましょうか?');
+        clippyAgent.animate();
+      } catch (e) { fail('clippyjs', e); }
+    };
+
+    // oneko.js: 猫の画像(gif)の場所を data-cat で教える
+    let nekoOn = false;
+    document.getElementById('neko').onclick = () => {
+      if (nekoOn) { show(msg, '猫はもういるよ。マウスを動かしてみて'); return; }
+      nekoOn = true;
+      const sc = document.createElement('script');
+      sc.src = 'https://cdn.jsdelivr.net/gh/adryd325/oneko.js@main/oneko.js';
+      sc.dataset.cat = 'https://cdn.jsdelivr.net/gh/adryd325/oneko.js@main/oneko.gif';
+      sc.onerror = () => { nekoOn = false; fail('oneko', new Error('読み込み失敗')); };
+      document.head.appendChild(sc);
+    };
+
+    // Matter.js: 物理エンジン。押すたびに10個降ってくる。ドラッグで投げられる
+    let physEngine = null;
+    document.getElementById('phys').onclick = async () => {
+      try {
+        if (!window.Matter) await loadScript('https://cdn.jsdelivr.net/npm/matter-js/build/matter.min.js');
+        const { Engine, Render, Runner, Bodies, Composite, Mouse, MouseConstraint } = window.Matter;
+        const box = document.getElementById('physBox');
+        const w = box.clientWidth, h = box.clientHeight;
+        if (!physEngine) {
+          physEngine = Engine.create();
+          const render = Render.create({ element: box, engine: physEngine, options: { width: w, height: h, wireframes: false, background: '#222' } });
+          Composite.add(physEngine.world, [
+            Bodies.rectangle(w / 2, h + 25, w, 50, { isStatic: true }),
+            Bodies.rectangle(-25, h / 2, 50, h, { isStatic: true }),
+            Bodies.rectangle(w + 25, h / 2, 50, h, { isStatic: true }),
+          ]);
+          const mouse = Mouse.create(render.canvas);
+          // マウスホイールを奪われてページがスクロールできなくなるのを防ぐ
+          ['wheel', 'mousewheel', 'DOMMouseScroll'].forEach((n) => mouse.element.removeEventListener(n, mouse.mousewheel));
+          Composite.add(physEngine.world, MouseConstraint.create(physEngine, { mouse, constraint: { render: { visible: false } } }));
+          Render.run(render);
+          Runner.run(Runner.create(), physEngine);
+        }
+        for (let i = 0; i < 10; i++) {
+          const x = Math.random() * (w - 60) + 30;
+          const opt = { restitution: 0.7, render: { fillStyle: `hsl(${Math.random() * 360}, 70%, 60%)` } };
+          const body = Math.random() < 0.5
+            ? Bodies.circle(x, -20, 10 + Math.random() * 15, opt)
+            : Bodies.rectangle(x, -20, 20 + Math.random() * 30, 20 + Math.random() * 30, opt);
+          Composite.add(physEngine.world, body);
+        }
+      } catch (e) { fail('Matter.js', e); }
     };
   </script>
 </body>

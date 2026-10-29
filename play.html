@@ -62,6 +62,19 @@
   <button id="ipsum">corporate-ipsum: 会社っぽい文章</button>
   <pre id="weirdOut">ここに結果が出る(Thanosで消える枠もここ)</pre>
 
+  <h2>人気ランキング上位</h2>
+  <button id="swp">swiper: キューブ回転</button>
+  <button id="slk">slick: スライダー</button>
+  <button id="gs">gsap: 全部が暴れる</button>
+  <button id="bs">bootstrap: 見た目を変える</button>
+  <button id="bi">bootstrap-icons: アイコン</button>
+  <button id="emo">emoji-datasource-apple: 絵文字</button>
+  <button id="hls">hls.js: 動画を流す(無音)</button>
+  <br>
+  <input id="tex" type="text" value="\int_0^\infty e^{-x^2}\,dx = \frac{\sqrt{\pi}}{2}" style="width:20rem">
+  <button id="mj">mathjax: 数式にする</button>
+  <div id="topBox"></div>
+
   <script type="module">
     // CDNから is-even を読み込む(npm installなしで使う方法)
     import isEven from 'https://cdn.jsdelivr.net/npm/is-even/+esm';
@@ -286,6 +299,173 @@
         if (typeof createIpsum !== 'function') throw new Error('中身が想定外: ' + Object.keys(m).join(','));
         show(weird, createIpsum());
       } catch (e) { fail('corporate-ipsum', e); }
+    };
+
+    // ===== 人気ランキング上位 =====
+    const topBox = document.getElementById('topBox');
+    // 結果を置く箱。同じIDの箱があれば使い回す
+    const getBox = (id, style = '') => {
+      let el = document.getElementById(id);
+      if (!el) {
+        el = document.createElement('div');
+        el.id = id;
+        el.style.cssText = 'margin-top:.75rem;' + style;
+        topBox.appendChild(el);
+      }
+      return el;
+    };
+    const loadCss = (href) => new Promise((ok, ng) => {
+      const l = document.createElement('link');
+      l.rel = 'stylesheet';
+      l.href = href;
+      l.onload = ok;
+      l.onerror = () => ng(new Error('CSS読み込み失敗: ' + href));
+      document.head.appendChild(l);
+    });
+    const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f'];
+
+    // swiper: 3Dのキューブが回るスライダー
+    document.getElementById('swp').onclick = async () => {
+      const el = getBox('swpBox');
+      try {
+        if (el.dataset.ready) return;
+        el.dataset.ready = '1';
+        await loadCss('https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css');
+        if (!window.Swiper) await loadScript('https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js');
+        if (!window.Swiper) throw new Error('読み込んだのに Swiper が定義されていない');
+        el.innerHTML = '<div class="swiper" style="width:240px;height:240px;margin:0">'
+          + '<div class="swiper-wrapper">'
+          + colors.map((c, i) => `<div class="swiper-slide" style="background:${c};display:flex;align-items:center;justify-content:center;font-size:4rem;color:#fff">${i + 1}</div>`).join('')
+          + '</div><div class="swiper-pagination"></div></div>';
+        new window.Swiper(el.firstChild, {
+          effect: 'cube',
+          loop: true,
+          autoplay: { delay: 1500 },
+          pagination: { el: el.querySelector('.swiper-pagination'), clickable: true },
+        });
+      } catch (e) { el.dataset.ready = ''; fail('swiper', e); }
+    };
+
+    // slick: jQuery が必要な古い世代のスライダー
+    document.getElementById('slk').onclick = async () => {
+      const el = getBox('slkBox', 'max-width:420px;');
+      try {
+        if (el.dataset.ready) return;
+        el.dataset.ready = '1';
+        await loadCss('https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css');
+        await loadCss('https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css');
+        if (!window.jQuery) await loadScript('https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js');
+        if (!window.jQuery) throw new Error('jQuery が定義されていない');
+        if (!window.jQuery.fn.slick) {
+          try { await loadScript('https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.min.js'); }
+          catch (_) { await loadScript('https://cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.1/slick/slick.min.js'); }
+        }
+        if (!window.jQuery.fn.slick) throw new Error('読み込んだのに slick が使えない');
+        el.innerHTML = colors.map((c, i) => `<div><div style="background:${c};height:140px;display:flex;align-items:center;justify-content:center;font-size:3rem;color:#fff">${i + 1}</div></div>`).join('');
+        window.jQuery(el).slick({ dots: true, autoplay: true, autoplaySpeed: 1500 });
+      } catch (e) { el.dataset.ready = ''; fail('slick', e); }
+    };
+
+    // gsap: ページ上の見出しとボタンを全部ランダムに飛ばして、2秒後に元へ戻す
+    document.getElementById('gs').onclick = async () => {
+      try {
+        if (!window.gsap) await loadScript('https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js');
+        if (!window.gsap) throw new Error('読み込んだのに gsap が定義されていない');
+        const targets = document.querySelectorAll('button, h1, h2');
+        window.gsap.to(targets, {
+          x: () => Math.random() * 200 - 100,
+          y: () => Math.random() * 100 - 50,
+          rotation: () => Math.random() * 60 - 30,
+          duration: 0.6, stagger: 0.02, ease: 'elastic.out(1, 0.4)',
+        });
+        window.gsap.to(targets, { x: 0, y: 0, rotation: 0, duration: 1, delay: 2, stagger: 0.02, ease: 'bounce.out' });
+      } catch (e) { fail('gsap', e); }
+    };
+
+    // bootstrap: CSSを読み込むと、ページ全体の見た目が変わる(再読み込みで戻る)
+    document.getElementById('bs').onclick = async () => {
+      try {
+        if (document.documentElement.dataset.bs) return;
+        document.documentElement.dataset.bs = '1';
+        await loadCss('https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css');
+        document.documentElement.setAttribute('data-bs-theme', 'dark');
+        const kinds = ['btn-primary', 'btn-success', 'btn-danger', 'btn-warning', 'btn-info'];
+        document.querySelectorAll('button').forEach((b, i) => b.classList.add('btn', kinds[i % kinds.length], 'm-1'));
+        getBox('bsBox').innerHTML = '<div class="alert alert-warning">Bootstrap の見た目になった。再読み込みで戻る</div>';
+      } catch (e) { document.documentElement.dataset.bs = ''; fail('bootstrap', e); }
+    };
+
+    // bootstrap-icons: クラス名を書くだけでアイコンが出る
+    document.getElementById('bi').onclick = async () => {
+      try {
+        await loadCss('https://cdn.jsdelivr.net/npm/bootstrap-icons@1/font/bootstrap-icons.min.css');
+        const names = ['heart-fill', 'star-fill', 'bug-fill', 'robot', 'lightning-fill', 'github', 'rocket-takeoff', 'cup-hot-fill'];
+        getBox('biBox').innerHTML = names.map((n) => `<i class="bi bi-${n}" title="${n}" style="font-size:2.5rem;margin-right:.75rem"></i>`).join('');
+      } catch (e) { fail('bootstrap-icons', e); }
+    };
+
+    // emoji-datasource-apple: 絵文字の一覧(JSON)から24個選んで、Appleの絵文字画像を並べる
+    let emojiList = null;
+    document.getElementById('emo').onclick = async () => {
+      const el = getBox('emoBox');
+      try {
+        if (!emojiList) {
+          const res = await fetch('https://cdn.jsdelivr.net/npm/emoji-datasource-apple/emoji.json');
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          emojiList = (await res.json()).filter((e) => e.has_img_apple);
+        }
+        el.innerHTML = '';
+        for (let i = 0; i < 24; i++) {
+          const e = emojiList[Math.floor(Math.random() * emojiList.length)];
+          const img = document.createElement('img');
+          img.src = 'https://cdn.jsdelivr.net/npm/emoji-datasource-apple/img/apple/64/' + e.image;
+          img.title = e.short_name;
+          img.width = 48; img.height = 48;
+          img.style.margin = '2px';
+          el.appendChild(img);
+        }
+      } catch (e) { fail('emoji-datasource-apple', e); }
+    };
+
+    // hls.js: m3u8(分割された動画)を普通の video タグで再生する。音は消してある
+    document.getElementById('hls').onclick = async () => {
+      const el = getBox('hlsBox');
+      try {
+        if (el.dataset.ready) return;
+        el.dataset.ready = '1';
+        if (!window.Hls) await loadScript('https://cdn.jsdelivr.net/npm/hls.js@latest');
+        if (!window.Hls) throw new Error('読み込んだのに Hls が定義されていない');
+        const v = document.createElement('video');
+        v.controls = true; v.muted = true;
+        v.style.cssText = 'width:100%;max-width:480px';
+        el.appendChild(v);
+        const src = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+        if (window.Hls.isSupported()) {
+          const hls = new window.Hls();
+          hls.loadSource(src);
+          hls.attachMedia(v);
+          hls.on(window.Hls.Events.MANIFEST_PARSED, () => v.play().catch(() => {}));
+        } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
+          v.src = src;
+          v.play().catch(() => {});
+        } else {
+          throw new Error('このブラウザはHLS非対応');
+        }
+      } catch (e) { el.dataset.ready = ''; fail('hls.js', e); }
+    };
+
+    // mathjax: 入力欄のTeX記法を、きれいな数式にする
+    document.getElementById('mj').onclick = async () => {
+      const el = getBox('mjBox', 'font-size:1.6rem');
+      try {
+        if (!window.MathJax || !window.MathJax.typesetPromise) {
+          await loadScript('https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js');
+          if (!window.MathJax) throw new Error('読み込んだのに MathJax が定義されていない');
+          await window.MathJax.startup.promise;
+        }
+        el.textContent = '\\[' + document.getElementById('tex').value + '\\]';
+        await window.MathJax.typesetPromise([el]);
+      } catch (e) { fail('mathjax', e); }
     };
   </script>
 </body>
